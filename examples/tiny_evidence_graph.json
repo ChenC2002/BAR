@@ -1,0 +1,73 @@
+{
+  "nodes": [
+    {
+      "node_id": "DIABETES",
+      "name": "Diabetes mellitus",
+      "node_type": "condition"
+    },
+    {
+      "node_id": "HTN",
+      "name": "Hypertension",
+      "node_type": "condition"
+    },
+    {
+      "node_id": "CKD",
+      "name": "Chronic kidney disease",
+      "node_type": "target_disease"
+    }
+  ],
+  "edges": [
+    {
+      "edge_id": "e_diabetes_ckd",
+      "head": "DIABETES",
+      "relation": "risk_factor_for",
+      "tail": "CKD",
+      "support_score": 0.92,
+      "equiv_group_id": "eq:DIABETES|risk_factor_for|CKD",
+      "provenance": [
+        {
+          "source_id": "demo-curated",
+          "title": "Tiny curated demo source",
+          "score": 0.92
+        }
+      ],
+      "metadata": {
+        "relation_category": "disease_disease",
+        "n_curated_sources": 2,
+        "text_score": 0.9
+      }
+    },
+    {
+      "edge_id": "e_htn_ckd",
+      "head": "HTN",
+      "relation": "associated_with",
+      "tail": "CKD",
+      "support_score": 0.81,
+      "equiv_group_id": "eq:HTN|associated_with|CKD",
+      "provenance": [
+        {
+          "source_id": "demo-text",
+          "title": "Tiny retrieved abstract",
+          "score": 0.81
+        }
+      ],
+      "metadata": {
+        "relation_category": "disease_disease",
+        "n_curated_sources": 1,
+        "text_score": 0.78
+      }
+    }
+  ],
+  "equiv_groups": {
+    "eq:DIABETES|risk_factor_for|CKD": ["e_diabetes_ckd"],
+    "eq:HTN|associated_with|CKD": ["e_htn_ckd"]
+  },
+  "expansion_guide": {
+    "DIABETES": ["e_diabetes_ckd"],
+    "HTN": ["e_htn_ckd"]
+  },
+  "metadata": {
+    "target_disease_id": "CKD",
+    "description": "Tiny graph for smoke tests and reviewer command checks."
+  }
+}

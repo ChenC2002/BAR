@@ -1,0 +1,28 @@
+[project]
+name = "bar-paper-code"
+version = "0.1.0"
+description = "Code scaffold for budget-aware LLM reasoning over medical knowledge graphs."
+requires-python = ">=3.9"
+dependencies = []
+
+[project.optional-dependencies]
+full = [
+  "torch>=2.2",
+  "numpy>=1.26",
+  "pandas>=2.2",
+  "scikit-learn>=1.4",
+  "networkx>=3.2",
+  "rank-bm25>=0.2.2",
+  "transformers>=4.40",
+  "openai>=1.0"
+]
+
+[project.scripts]
+bar = "bar.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
