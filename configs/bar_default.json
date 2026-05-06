@@ -1,0 +1,59 @@
+{
+  "evidence_graph": {
+    "hop_limit": 2,
+    "degree_cap": 200,
+    "hub_edge_cap": 50,
+    "support_threshold": 0.55,
+    "scorer_curated_weight": 0.35,
+    "expansion_guide_top_k": 20,
+    "curated_source_cap": 3
+  },
+  "reasoning_loop": {
+    "budget_min": 1.0,
+    "budget_max": 5.0,
+    "query_cost": 1.0,
+    "expand_cost": 1.0,
+    "select_cost": 0.5,
+    "prefilter_cap": 8,
+    "evidence_cap": 8,
+    "citation_cap": 5,
+    "min_edges": 1,
+    "stop_delta": 0.001,
+    "stop_patience": 2,
+    "fallback_quality_threshold": 0.1,
+    "llm_default": "gpt-4o-mini",
+    "llm_secondary": "qwen3-8b"
+  },
+  "training": {
+    "stages": [
+      "stage1_ehr_only_baseline",
+      "stage2_supervised_warmup",
+      "stage3_reinforce_policy_optimization"
+    ],
+    "policy_optimizer": "reinforce",
+    "predictor_lr": 0.0001,
+    "policy_lr": 0.00001,
+    "ehr_encoder": "2-layer-gru",
+    "fusion": "2-layer-mlp",
+    "reward_weights": {
+      "gain": 1.0,
+      "cost": 0.1,
+      "citation_integrity": 0.25
+    }
+  },
+  "experiments": {
+    "datasets": ["mimic-iii", "mimic-iv"],
+    "horizons_days": [30, 90, 365],
+    "target_diseases": [
+      "chronic_kidney_disease",
+      "heart_failure",
+      "copd_exacerbation",
+      "hyperkalemia",
+      "hypoglycemia",
+      "ischemic_stroke",
+      "sepsis",
+      "deep_vein_thrombosis"
+    ],
+    "metrics": ["AUROC", "AUPRC", "citation_precision", "evidence_quality", "budget_utilization", "reasoning_steps", "fallback_rate"]
+  }
+}
