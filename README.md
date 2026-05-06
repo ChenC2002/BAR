@@ -1,9 +1,4 @@
-<<<<<<< HEAD
-# Cite What You Explore: Budget-Aware LLM Reasoning over Medical Knowledge Graph
-=======
-# BAR: Budget-Aware LLM Reasoning over Medical Knowledge Graphs
-
-BAR is a research codebase for **Cite What You Explore: Budget-Aware LLM Reasoning over Medical KGs with Verifiable Evidence**.
+# Cite What You Explore: Budget-Aware LLM Reasoning over Medical KGs with Verifiable Evidence
 
 The project studies post-discharge risk prediction from electronic health records (EHRs). Given a patient's discharge-time diagnosis codes, pre-discharge history, a target disease, and a future prediction horizon, BAR predicts whether the disease will first appear after discharge and returns a citation list of supporting medical-knowledge-graph edges.
 
