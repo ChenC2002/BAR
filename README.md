@@ -48,11 +48,6 @@ Expected demo output includes a patient-specific budget, total acquisition cost,
 
 ## Installation
 
-Minimal commands and tests use only the Python standard library:
-
-```bash
-python3 --version
-PYTHONPATH=src python3 -m bar.cli show-training-stages
 ```
 
 For full experiments, install the optional dependencies:
