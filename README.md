@@ -1,6 +1,6 @@
 # Cite What You Explore: Budget-Aware LLM Reasoning over Medical KGs with Verifiable Evidence
 
-The project studies post-discharge risk prediction from electronic health records (EHRs). Given a patient's discharge-time diagnosis codes, pre-discharge history, a target disease, and a future prediction horizon, BAR predicts whether the disease will first appear after discharge and returns a citation list of supporting medical-knowledge-graph edges.
+The project studies post-discharge risk prediction from electronic health records (EHRs). Given a patient's discharge-time diagnosis codes, pre-discharge history, a target disease, and a future prediction horizon, our model (BAR) predicts whether the disease will first appear after discharge and returns a citation list of supporting medical-knowledge-graph edges.
 
 BAR is built around three ideas:
 
