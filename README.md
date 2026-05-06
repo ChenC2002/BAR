@@ -48,8 +48,6 @@ Expected demo output includes a patient-specific budget, total acquisition cost,
 
 ## Installation
 
-```
-
 For full experiments, install the optional dependencies:
 
 ```bash
