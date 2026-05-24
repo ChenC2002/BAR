@@ -277,17 +277,6 @@ Default settings live in [configs/bar_default.json](configs/bar_default.json):
 
 The `reasoning_loop` block is intentionally compatible with `ReasoningBudget(**config["reasoning_loop"])`.
 
-## Data And Assets
-
-Full experiments expect:
-
-- MIMIC-III and/or MIMIC-IV diagnosis/admission tables under credentialed access.
-- ICD-to-UMLS mappings and CUI-to-PrimeKG mappings.
-- PrimeKG nodes and edges.
-- A fixed PubMed abstract index for textual support scoring.
-- Optional LLM access for plan generation, edge selection, verification, plan revision, and citation judging.
-
-The repository does not include restricted clinical data.
 
 ## Verification
 
