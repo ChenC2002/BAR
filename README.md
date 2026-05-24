@@ -305,25 +305,3 @@ print("imports ok")
 PY
 ```
 
-## Implementation Status
-
-Implemented now:
-
-- Stable schemas and JSON evidence graph contract
-- Disease-specific evidence graph refinement logic
-- `QUERY_GUIDE` / `QUERY_EXPAND` graph access
-- Budget-aware plan-navigate-verify loop
-- Prompt templates
-- Predictor interface
-- Reward and metric utilities
-- Tiny local example and smoke test
-- Scaffold script entry points for full-run boundaries
-
-Still to fill for paper-scale runs:
-
-- Concrete MIMIC table loaders
-- PrimeKG/PubMed ingestion
-- PubMed BM25/PubMedBERT support-score computation
-- Neural EHR encoder and edge representation model
-- LLM policy implementation
-- End-to-end training loops behind the script entry points
