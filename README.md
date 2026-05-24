@@ -289,7 +289,7 @@ Full experiments expect:
 
 The repository does not include restricted clinical data.
 
-## Development Checks
+## Verification
 
 ```bash
 PYTHONDONTWRITEBYTECODE=1 python3 tests/smoke_test.py
@@ -305,7 +305,7 @@ print("imports ok")
 PY
 ```
 
-## Current Scope
+## Implementation Status
 
 Implemented now:
 
