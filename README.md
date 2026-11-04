@@ -6,7 +6,7 @@ It assigns an uncertainty-based exploration
 budget, plans and verifies graph queries, and returns a prediction with a trace
 and citations. When evidence is insufficient, it returns the frozen EHR prediction.
 
-[Live Demo](https://chenc2002.github.io/BAR/demo/) · [Method](#method) · [Data](#data) · [Workflow](#workflow)
+[Paper](https://arxiv.org/abs/2610.07739) · [Live Demo](https://chenc2002.github.io/BAR/demo/) · [Method](#method) · [Data](#data) · [Workflow](#workflow)
 
 ## Demo
 
@@ -207,12 +207,15 @@ permitted by your data-use agreements. Labels and numerical EHR features are not
 If you use BAR in your research, please cite:
 
 ```bibtex
-@unpublished{chen2026bar,
+@misc{chen2026bar,
   title = {Cite What You Explore: Budget-Aware {LLM} Reasoning over Medical {KGs} with Verifiable Evidence},
   author = {Chen, Chen and Wang, Dongjie and Liu, Mei and Yao, Zijun},
   year = {2026},
-  note = {Unpublished manuscript},
-  url = {https://github.com/ChenC2002/BAR}
+  eprint = {2610.07739},
+  archivePrefix = {arXiv},
+  primaryClass = {cs.LG},
+  doi = {10.48550/arXiv.2610.07739},
+  url = {https://arxiv.org/abs/2610.07739}
 }
 ```
 

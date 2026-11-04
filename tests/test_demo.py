@@ -80,6 +80,17 @@ def test_release_version_is_consistent():
     assert "V2.0" in (ROOT / "demo/index.html").read_text()
 
 
+def test_citation_points_to_arxiv_paper():
+    readme = (ROOT / "README.md").read_text()
+    citation = (ROOT / "CITATION.cff").read_text()
+    for text in (readme, citation):
+        assert "https://arxiv.org/abs/2610.07739" in text
+        assert "10.48550/arXiv.2610.07739" in text
+        assert "Unpublished manuscript" not in text
+    assert "eprint = {2610.07739}" in readme
+    assert 'journal: "arXiv"' in citation
+
+
 def test_readme_local_links_resolve():
     readme = (ROOT / "README.md").read_text()
     targets = re.findall(r"\]\(([^)]+)\)", readme) + re.findall(r'src="([^"]+)"', readme)

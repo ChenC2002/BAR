@@ -1,5 +1,5 @@
 cff-version: 1.2.0
-message: "If you use BAR, please cite the accompanying manuscript below."
+message: "If you use BAR, please cite the arXiv paper below."
 type: software
 title: "BAR: Budget-Aware LLM Reasoning over Medical KGs with Verifiable Evidence"
 version: 2.0.0
@@ -15,7 +15,7 @@ authors:
   - family-names: Yao
     given-names: Zijun
 preferred-citation:
-  type: unpublished
+  type: article
   title: "Cite What You Explore: Budget-Aware LLM Reasoning over Medical KGs with Verifiable Evidence"
   authors:
     - family-names: Chen
@@ -27,5 +27,7 @@ preferred-citation:
     - family-names: Yao
       given-names: Zijun
   year: 2026
-  notes: "Unpublished manuscript."
-  url: "https://github.com/ChenC2002/BAR"
+  journal: "arXiv"
+  notes: "arXiv:2610.07739 [cs.LG]"
+  doi: "10.48550/arXiv.2610.07739"
+  url: "https://arxiv.org/abs/2610.07739"
