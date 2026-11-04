@@ -1,6 +1,4 @@
-# BAR
-
-Core implementation of **Cite What You Explore: Budget-Aware LLM Reasoning over Medical KGs with Verifiable Evidence**.
+# Cite What You Explore: Budget-Aware LLM Reasoning over Medical KGs with Verifiable Evidence
 
 BAR builds disease-specific evidence graphs, acquires evidence through a budget-aware plan-navigate-verify loop, and combines that evidence with EHR features for risk prediction. This release implements the core algorithm in Python and PyTorch, with Pydantic input validation and NetworkX graph operations.
 
@@ -58,7 +56,7 @@ bar predict --checkpoint artifacts/bar.pt --case examples/tiny_case.json \
 
 The same `--policy llm --model ...` options work for training. A compatible endpoint can be provided with `--base-url`; it must support Chat Completions structured outputs. The SDK handles transport retries and timeouts. Refusals and malformed outputs produce an explicit `policy_error` trace and frozen-EHR fallback. LLM weights stay frozen; REINFORCE trains the local query router. The demo-trained checkpoint is only suitable for checking integration.
 
-## Scope
+## Implementation Notes
 
 This is a compact algorithm implementation of Sections 2.2-2.4, not the full experiment pipeline. It intentionally omits MIMIC-specific ingestion, PubMed retrieval/embedding generation, large-scale training infrastructure, baseline suites, citation-judge studies and appendix experiments. The training schedule and model width in [the config](configs/bar_default.json) are small example settings, not the paper's experimental configuration.
 
