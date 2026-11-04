@@ -1,0 +1,31 @@
+cff-version: 1.2.0
+message: "If you use BAR, please cite the accompanying manuscript below."
+type: software
+title: "BAR: Budget-Aware LLM Reasoning over Medical KGs with Verifiable Evidence"
+version: 2.0.0
+repository-code: "https://github.com/ChenC2002/BAR"
+url: "https://github.com/ChenC2002/BAR"
+authors:
+  - family-names: Chen
+    given-names: Chen
+  - family-names: Wang
+    given-names: Dongjie
+  - family-names: Liu
+    given-names: Mei
+  - family-names: Yao
+    given-names: Zijun
+preferred-citation:
+  type: unpublished
+  title: "Cite What You Explore: Budget-Aware LLM Reasoning over Medical KGs with Verifiable Evidence"
+  authors:
+    - family-names: Chen
+      given-names: Chen
+    - family-names: Wang
+      given-names: Dongjie
+    - family-names: Liu
+      given-names: Mei
+    - family-names: Yao
+      given-names: Zijun
+  year: 2026
+  notes: "Unpublished manuscript."
+  url: "https://github.com/ChenC2002/BAR"

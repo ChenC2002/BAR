@@ -2,6 +2,7 @@
 name = "bar-paper-code"
 version = "2.0.0"
 description = "Core algorithms for budget-aware reasoning over medical knowledge graphs."
+license-files = ["LICENSE", "THIRD_PARTY_NOTICES.md", "demo/vendor/lucide-LICENSE"]
 requires-python = ">=3.11"
 dependencies = ["torch>=2.6,<3", "numpy>=1.26,<3", "pydantic>=2.10,<3", "networkx>=3.4,<4"]
 
@@ -25,7 +26,7 @@ include-package-data = false
 "bar._demo" = ["*.html", "*.css", "*.js", "vendor/*.js", "vendor/*LICENSE"]
 
 [build-system]
-requires = ["setuptools>=68"]
+requires = ["setuptools>=77"]
 build-backend = "setuptools.build_meta"
 
 [tool.pytest.ini_options]

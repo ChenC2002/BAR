@@ -1,4 +1,5 @@
 include requirements.txt
+include CITATION.cff
 recursive-include configs *.json
 recursive-include scripts *.py
 recursive-include tests *.py *.json *.md

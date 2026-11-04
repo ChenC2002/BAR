@@ -15,6 +15,7 @@ from bar.model import BARModel, QueryRouter
 from bar.policy import Policy, PolicyError
 from bar.schemas import (
     Case,
+    Edge,
     Plan,
     PlanStep,
     Prediction,
@@ -48,7 +49,17 @@ class BAR:
         self.model, self.baseline, self.router = model, baseline, router
         self.stores, self.budgets, self.policy, self.config = stores, budgets, policy, config
 
-    def _context(self, case: Case, store: GraphStore, trace: Trace, frontier: set[str]) -> dict:
+    def _context(
+        self,
+        case: Case,
+        store: GraphStore,
+        trace: Trace,
+        frontier: set[str],
+        candidates: list[Edge] | None = None,
+    ) -> dict:
+        anchors = set(case.anchor_ids) & store.nodes.keys()
+        node_ids = {case.disease_id, *anchors, *frontier}
+        node_ids.update(node for edge in candidates or [] for node in (edge.head, edge.tail))
         return {
             "patient": {
                 "diagnosis_codes": case.diagnosis_codes,
@@ -56,8 +67,9 @@ class BAR:
             },
             "disease": case.disease_id,
             "horizon_days": case.horizon_days,
-            "anchors": sorted(set(case.anchor_ids) & store.nodes.keys()),
+            "anchors": sorted(anchors),
             "frontier": {key: store.nodes[key].name for key in sorted(frontier)},
+            "node_names": {key: store.nodes[key].name for key in sorted(node_ids)},
             "relations": sorted({e.relation for e in store.edges.values()}),
             "accepted": [store.edges[eid].model_dump() for eid in trace.evidence_ids],
             "remaining_budget": trace.budget - trace.total_cost,
@@ -148,7 +160,7 @@ class BAR:
                 key=lambda e: (-self.model.quality(e, state).detach().item(), e.edge_id),
             )
             candidates = ranked[: cfg.prefilter_cap]
-            payload = self._context(case, store, trace, frontier)
+            payload = self._context(case, store, trace, frontier, candidates)
             payload.update(
                 step=step.model_dump(),
                 candidates=[e.model_dump() for e in candidates],
@@ -221,8 +233,14 @@ class BAR:
                 trace.terminal_reason = "quality_stagnation"
                 break
             if not accepted:
-                context = self._context(case, store, trace, frontier)
-                context.update(failed_step=step.model_dump(), feedback=trace.steps[-1].model_dump())
+                context = self._context(case, store, trace, frontier, candidates)
+                # Calls are stateless: revision needs the failed triples, not only their IDs.
+                context.update(
+                    failed_step=step.model_dump(),
+                    feedback=trace.steps[-1].model_dump(),
+                    candidates=[e.model_dump() for e in candidates],
+                    selected=[allowed[eid].model_dump() for eid in selected if eid in allowed],
+                )
                 try:
                     pending = deque(self.policy.complete("revise", context, Plan).steps)
                 except PolicyError:

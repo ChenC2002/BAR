@@ -2,7 +2,9 @@ import os
 import subprocess
 import sys
 import tarfile
+from email.parser import BytesParser
 from pathlib import Path
+from zipfile import ZipFile
 
 import pytest
 
@@ -15,6 +17,9 @@ def test_sdist_and_wheel_work_outside_checkout(tmp_path):
     with tarfile.open(archive) as source:
         names = {name.split("/", 1)[1] for name in source.getnames() if "/" in name}
         required = {
+            "LICENSE",
+            "CITATION.cff",
+            "THIRD_PARTY_NOTICES.md",
             "tests/conftest.py",
             "tests/fixtures/tiny_cases.json",
             "configs/bar_default.json",
@@ -27,6 +32,14 @@ def test_sdist_and_wheel_work_outside_checkout(tmp_path):
         source.extractall(tmp_path / "source", filter="data")
     checkout = next((tmp_path / "source").iterdir())
     wheel = build.ProjectBuilder(checkout).build("wheel", tmp_path / "dist")
+    with ZipFile(wheel) as bundle:
+        metadata_path = next(name for name in bundle.namelist() if name.endswith("/METADATA"))
+        metadata = BytesParser().parsebytes(bundle.read(metadata_path))
+        licenses = {"LICENSE", "THIRD_PARTY_NOTICES.md", "demo/vendor/lucide-LICENSE"}
+        assert set(metadata.get_all("License-File")) == licenses
+        for name in licenses:
+            path = metadata_path.removesuffix("METADATA") + "licenses/" + name
+            assert bundle.read(path) == (ROOT / name).read_bytes()
     target = tmp_path / "installed"
     subprocess.run(
         [sys.executable, "-m", "pip", "install", "--no-deps", "--target", str(target), wheel],

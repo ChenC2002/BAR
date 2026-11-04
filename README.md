@@ -22,8 +22,8 @@ frozen EHR baseline using an offline policy.
 
 | Download | Size | Contents |
 | --- | --- | --- |
-| [Offline demo](https://github.com/ChenC2002/BAR/raw/refs/heads/main/downloads/bar-demo-offline.zip) | ~115 KB | Viewer, examples, 36 traces, and evaluation; open `index.html` |
-| [Model package](https://github.com/ChenC2002/BAR/raw/refs/heads/main/downloads/bar-demo-model.zip) | ~793 KB | Checkpoint, evidence graph, fitted JSON preprocessing, configuration, and examples |
+| [Offline demo](https://github.com/ChenC2002/BAR/raw/refs/heads/main/downloads/bar-demo-offline.zip) | ~117 KB | Viewer, examples, 36 traces, and evaluation; open `index.html` |
+| [Model package](https://github.com/ChenC2002/BAR/raw/refs/heads/main/downloads/bar-demo-model.zip) | ~795 KB | Checkpoint, evidence graph, fitted JSON preprocessing, configuration, and examples |
 
 <details>
 <summary>Run locally (Python 3.11+)</summary>
@@ -201,3 +201,25 @@ Use the same policy options with `bar train` for LLM-guided exploration.
 outputs. LLM weights stay frozen; the query router is learned locally. Diagnosis
 context and graph evidence are sent to the endpoint, so use only data and services
 permitted by your data-use agreements. Labels and numerical EHR features are not sent.
+
+## Citation
+
+If you use BAR in your research, please cite:
+
+```bibtex
+@unpublished{chen2026bar,
+  title = {Cite What You Explore: Budget-Aware {LLM} Reasoning over Medical {KGs} with Verifiable Evidence},
+  author = {Chen, Chen and Wang, Dongjie and Liu, Mei and Yao, Zijun},
+  year = {2026},
+  note = {Unpublished manuscript},
+  url = {https://github.com/ChenC2002/BAR}
+}
+```
+
+Machine-readable citation metadata is available in [CITATION.cff](CITATION.cff).
+
+## License
+
+BAR source code is released under the [MIT License](LICENSE).
+Third-party components and model/data artifacts are covered separately;
+see [licensing scope and notices](THIRD_PARTY_NOTICES.md).

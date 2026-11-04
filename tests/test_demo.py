@@ -195,13 +195,16 @@ def test_downloads_match_sources_and_checksums(public_demo):
         with ZipFile(ROOT / "downloads" / f"bar-demo-{name}.zip") as bundle:
             manifest = json.loads(bundle.read(f"{prefix}/manifest.json"))
             assert manifest["format_version"] == 1
+            assert {"LICENSE", "CITATION.cff", "THIRD_PARTY_NOTICES.md"} <= manifest["files"].keys()
             assert set(bundle.namelist()) == {
                 f"{prefix}/{path}" for path in [*manifest["files"], "manifest.json"]
             }
             for path, checksum in manifest["files"].items():
                 content = bundle.read(f"{prefix}/{path}")
                 assert hashlib.sha256(content).hexdigest() == checksum
-                if name == "offline" and path != "README.txt":
+                if path in {"LICENSE", "CITATION.cff", "THIRD_PARTY_NOTICES.md"}:
+                    assert content == (ROOT / path).read_bytes()
+                elif name == "offline" and path != "README.txt":
                     assert content == (ROOT / "demo" / path).read_bytes()
             if name == "model":
                 assert set(manifest["files"]) == {
@@ -210,6 +213,9 @@ def test_downloads_match_sources_and_checksums(public_demo):
                     "config.json",
                     "public_demo.json",
                     "README.txt",
+                    "LICENSE",
+                    "CITATION.cff",
+                    "THIRD_PARTY_NOTICES.md",
                 }
                 assert json.loads(bundle.read(f"{prefix}/public_demo.json")) == public_demo
 

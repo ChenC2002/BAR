@@ -17,6 +17,7 @@ VIEWER_FILES = (
     "vendor/lucide-LICENSE",
 )
 MODEL_FILES = ("bar.pt", "features.json", "config.json", "public_demo.json")
+RELEASE_FILES = ("LICENSE", "CITATION.cff", "THIRD_PARTY_NOTICES.md")
 
 
 def archive(path, folder, files):
@@ -36,7 +37,9 @@ def archive(path, folder, files):
 
 
 def build(destination, model_run):
+    notices = {name: (ROOT / name).read_bytes() for name in RELEASE_FILES}
     viewer = {name: (ROOT / "demo" / name).read_bytes() for name in VIEWER_FILES}
+    viewer.update(notices)
     viewer["README.txt"] = (
         b"BAR Evidence Explorer\nOpen index.html in a browser. No server or installation is required.\n"
     )
@@ -78,6 +81,7 @@ def build(destination, model_run):
             if name != "public_demo.json"
         }
         files["public_demo.json"] = (json.dumps(public, allow_nan=False) + "\n").encode()
+        files.update(notices)
         files["README.txt"] = (
             "BAR CKD demo inference bundle\n\n"
             "bar.pt: trained BAR, frozen EHR baseline, query router, evidence graph and uncertainty CDFs.\n"

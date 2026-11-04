@@ -1,3 +1,5 @@
+from copy import deepcopy
+
 import pytest
 import torch
 
@@ -241,3 +243,75 @@ def test_guide_query_respects_plan_relations(engine, case):
     assert trace.terminal_reason == "no_actions"
     assert trace.evidence_ids == []
     assert trace.total_cost == 0
+
+
+def test_policy_context_names_target_and_visible_endpoints(engine, case, store):
+    calls = []
+
+    class Inspect(DemoPolicy):
+        def complete(self, operation, payload, schema):
+            calls.append((operation, deepcopy(payload)))
+            assert payload["node_names"][case.disease_id] == store.nodes[case.disease_id].name
+            assert set(payload["anchors"]) <= payload["node_names"].keys()
+            assert set(payload["frontier"]) <= payload["node_names"].keys()
+            for edge in payload.get("candidates", []) + payload["accepted"]:
+                for endpoint in (edge["head"], edge["tail"]):
+                    assert payload["node_names"][endpoint] == store.nodes[endpoint].name
+            return super().complete(operation, payload, schema)
+
+    engine.policy = Inspect()
+    engine.predict(case)
+    plan = calls[0][1]
+    assert plan["node_names"] == {
+        "CKD": "Chronic kidney disease",
+        "DIABETES": "Diabetes",
+    }
+    selected = next(payload for operation, payload in calls if operation == "select")
+    assert selected["node_names"]["RENAL_DAMAGE"] == "Renal damage"
+    assert "RENAL_DAMAGE" not in selected["frontier"]
+    assert "HTN" not in selected["node_names"]
+    assert {operation for operation, _ in calls} == {"plan", "select", "verify"}
+
+
+@pytest.mark.parametrize("failure", ["semantic", "empty", "unknown", "unpresented", "duplicate"])
+def test_revision_carries_failed_evidence_without_accepting_it(engine, case, failure):
+    calls = {}
+
+    class Inspect(DemoPolicy):
+        def complete(self, operation, payload, schema):
+            calls[operation] = deepcopy(payload)
+            if operation == "select":
+                ids = {
+                    "semantic": ["e_diabetes_renal"],
+                    "empty": [],
+                    "unknown": ["missing-edge"],
+                    "unpresented": ["e_htn_ckd"],
+                    "duplicate": ["e_diabetes_renal"] * 2,
+                }
+                return Selection(edge_ids=ids[failure])
+            if operation == "verify":
+                return Verification(passed=False, reason="contradiction")
+            return super().complete(operation, payload, schema)
+
+    engine.policy = Inspect()
+    initial = engine.model.initial_state(engine.model.encode(case), case)
+    rollout = engine.rollout(case)
+    revised = calls["revise"]
+    assert revised["candidates"] == calls["select"]["candidates"]
+    assert revised["selected"] == (
+        revised["candidates"] * (2 if failure == "duplicate" else 1)
+        if failure in {"semantic", "duplicate"}
+        else []
+    )
+    assert revised["candidates"][0]["provenance"][0]["source_id"] == "example:1"
+    assert revised["node_names"] == calls["select"]["node_names"]
+    assert revised["failed_step"] == calls["select"]["step"]
+    assert revised["feedback"] == rollout.trace.steps[0].model_dump()
+    assert revised["remaining_budget"] == rollout.trace.budget - rollout.trace.total_cost
+    assert revised["frontier"] == {"DIABETES": "Diabetes"}
+    assert revised["accepted"] == []
+    assert rollout.trace.evidence_ids == []
+    torch.testing.assert_close(rollout.state, initial)
+    serialized = str(revised)
+    assert "ehr_features" not in serialized
+    assert "label" not in serialized
