@@ -41,13 +41,14 @@
             <button id="export" class="icon-button" title="Download example trace" aria-label="Download example trace"><i data-lucide="download"></i></button>
             <button id="reset" class="icon-button" title="Reset example and settings" aria-label="Reset example and settings"><i data-lucide="rotate-ccw"></i></button>
           </div>
+          <div class="target-context"><i data-lucide="crosshair"></i><div><span>Prediction target</span><strong id="target-name">Chronic kidney disease</strong></div><div class="target-state"><span id="target-horizon"></span><span id="target-status"></span></div></div>
           <div class="metrics-strip">
             <div><span class="metric-label">Final risk</span><strong id="risk">--</strong><span id="risk-source" class="metric-note"></span></div>
             <div><span class="metric-label">EHR baseline</span><strong id="baseline">--</strong><span class="metric-note">Stage-1 EHR-only MLP</span></div>
             <div><span class="metric-label">Cost at this step</span><strong id="cost">--</strong><div class="budget-track"><span id="budget-fill"></span></div></div>
             <div><span class="metric-label">Final citations</span><strong id="citation-count">--</strong><span id="outcome" class="metric-note"></span></div>
           </div>
-          <div class="graph-heading"><h2>Acquired evidence</h2><div class="legend"><span><b class="dot anchor-dot"></b>Anchor</span><span><b class="dot evidence-dot"></b>Evidence</span><span><b class="dot target-dot"></b>Target</span></div></div>
+          <div class="graph-heading"><h2>Acquired evidence</h2><div class="legend"><span><b class="dot anchor-dot"></b>Anchor</span><span><b class="dot evidence-dot"></b>Evidence</span><span id="target-legend" hidden><b class="dot target-dot"></b>Target</span></div></div>
           <div id="graph-status" class="graph-status" aria-live="polite"></div>
           <div id="graph" class="graph" aria-label="Acquired evidence graph"></div>
           <div class="playback">

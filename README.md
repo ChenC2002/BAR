@@ -15,38 +15,22 @@ and citations. When evidence is insufficient, it returns the frozen EHR predicti
 
 [![BAR Evidence Explorer](assets/bar_demo.png)](https://chenc2002.github.io/BAR/demo/)
 
-The [Evidence Explorer](https://chenc2002.github.io/BAR/demo/) includes three example cases with
-30-, 90-, and 365-day predictions. Change the budget, replay evidence acquisition,
-inspect source records, and download a trace. The **Experiment** view includes
-per-horizon results and three-task macro averages for BAR and the EHR baseline.
+Explore three CKD examples across 30/90/365-day horizons, vary the budget, and
+replay evidence acquisition. Results come from a MIMIC-III run with **30,803
+patients**, a UMLS graph, and an offline policy. **Experiment** compares BAR with
+its frozen Stage-1 EHR-only MLP baseline (32 hidden units).
 
-Predictions come from a recorded MIMIC-III CKD experiment with **30,803 patients**,
-a patient-disjoint split, and a UMLS evidence graph. The viewer uses example
-cases and the trained checkpoint's recorded outputs with an offline
-policy. It contains aggregate evaluation results and example inputs, not patient
-records. These are research scores, not clinical recommendations.
+| Download | Size | Contents |
+| --- | --- | --- |
+| [Offline demo](https://github.com/ChenC2002/BAR/raw/refs/heads/main/downloads/bar-demo-offline.zip) | ~115 KB | Viewer, example inputs, 36 recorded traces, and evaluation; open `index.html` |
+| [Model package](https://github.com/ChenC2002/BAR/raw/refs/heads/main/downloads/bar-demo-model.zip) | ~793 KB | Trained checkpoint, evidence graph, fitted JSON preprocessing, configuration, and examples |
 
-The **EHR baseline** is BAR's frozen Stage-1 EHR-only predictor, following the
-baseline role in Section 2.4.3. In this run it uses a 32-unit MLP encoder, the same
-EHR features and task heads as BAR, and no graph evidence. Its checkpoint is
-selected by validation macro average precision, then frozen for comparison,
-budget allocation, and fallback.
+After installing BAR, reproduce the recorded examples locally:
 
-The online viewer needs no API key, dataset, or Python installation. For offline
-use, clone or download the repository and open `demo/index.html` locally.
-
-### Included Files
-
-| File | Contents |
-| --- | --- |
-| [`demo/data.js`](demo/data.js) | Three example inputs, 36 recorded prediction/trace combinations, retrieved graph nodes and edges, source records, and aggregate test metrics |
-| [`scripts/run_mimic_demo.py`](scripts/run_mimic_demo.py) | CKD cohort preparation, training, evaluation, and public demo export |
-| [`scripts/mimic_features.py`](scripts/mimic_features.py) | Diagnosis, demographic, and pre-discharge lab feature preparation |
-| [`scripts/export_demo.py`](scripts/export_demo.py) | Package the public export for the viewer, with patient-field checks |
-
-Trained weights (`bar.pt`), fitted preprocessing (`features.joblib`), and
-patient-level MIMIC records remain on the data host and are not bundled in this
-repository. The browser reads recorded outputs and does not load a checkpoint.
+```bash
+python scripts/predict_demo.py --verify-all
+python scripts/predict_demo.py --case example-diabetes --horizon 90 --budget auto
+```
 
 ## Method Map
 

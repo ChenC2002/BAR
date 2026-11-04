@@ -1,8 +1,10 @@
 """Discharge-bounded laboratory summaries and training-fitted tabular features."""
 
 import csv
+import json
 from collections import Counter
 from datetime import datetime
+from pathlib import Path
 
 import numpy as np
 
@@ -58,7 +60,72 @@ def tokens(codes):
     return {token for code in codes for token in ("code:" + code, "group:" + code[:3])}
 
 
+class FrozenNumeric:
+    """Portable inference for the fitted median/indicator/standard-scaling pipeline."""
+
+    def __init__(self, state):
+        self.statistics = np.asarray(state["statistics"], dtype=np.float64)
+        self.indicators = np.asarray(state["indicators"], dtype=np.int64)
+        self.mean = np.asarray(state["mean"], dtype=np.float64)
+        self.scale = np.asarray(state["scale"], dtype=np.float64)
+        width = 6 + 3 * len(LABS)
+        if (
+            self.statistics.shape != (width,)
+            or self.indicators.ndim != 1
+            or np.any(self.indicators < 0)
+            or np.any(self.indicators >= width)
+            or len(set(self.indicators)) != len(self.indicators)
+            or self.mean.shape != (width + len(self.indicators),)
+            or self.scale.shape != self.mean.shape
+            or not all(np.isfinite(a).all() for a in (self.statistics, self.mean, self.scale))
+            or np.any(self.scale <= 0)
+        ):
+            raise ValueError("Invalid fitted numeric transform")
+
+    def transform(self, rows):
+        values = np.asarray(rows, dtype=np.float64)
+        missing = np.isnan(values)
+        imputed = np.where(missing, self.statistics, values)
+        expanded = np.concatenate([imputed, missing[:, self.indicators]], axis=1)
+        return (expanded - self.mean) / self.scale
+
+
 class FeatureEncoder:
+    def save(self, path):
+        imputer, scaler = self.numeric
+        Path(path).write_text(
+            json.dumps(
+                {
+                    "format_version": 1,
+                    "vocabulary": self.vocabulary,
+                    "numeric": {
+                        "statistics": imputer.statistics_.tolist(),
+                        "indicators": imputer.indicator_.features_.tolist(),
+                        "mean": scaler.mean_.tolist(),
+                        "scale": scaler.scale_.tolist(),
+                    },
+                },
+                allow_nan=False,
+                indent=2,
+            )
+            + "\n",
+            encoding="utf-8",
+        )
+
+    @classmethod
+    def from_dict(cls, state):
+        if state["format_version"] != 1:
+            raise ValueError("Unsupported feature transform version")
+        vocabulary = state["vocabulary"]
+        if not isinstance(vocabulary, list) or not all(isinstance(t, str) for t in vocabulary):
+            raise ValueError("Invalid feature vocabulary")
+        if len(set(vocabulary)) != len(vocabulary):
+            raise ValueError("Feature vocabulary must be unique")
+        encoder = cls()
+        encoder.vocabulary = vocabulary
+        encoder.numeric = FrozenNumeric(state["numeric"])
+        return encoder
+
     def fit(self, records):
         from sklearn.impute import SimpleImputer
         from sklearn.pipeline import make_pipeline

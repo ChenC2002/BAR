@@ -239,6 +239,7 @@ def main():
         for r, features in zip(records, encoder.transform(records), strict=True)
     }
     joblib.dump(encoder, args.out / "features.joblib")
+    encoder.save(args.out / "features.json")
     config = Config(
         seed=args.seed,
         hidden_dim=32,

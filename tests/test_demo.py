@@ -107,3 +107,46 @@ def test_demo_assets_are_packaged():
     references = re.findall(r'(?:src|href)="([^"#]+\.(?:js|css))"', html)
     assert {f"demo/{path}" for path in references} <= packaged
     assert all((ROOT / path).is_file() for path in packaged)
+
+
+def test_downloads_match_sources_and_checksums(public_demo):
+    import hashlib
+    from zipfile import ZipFile
+
+    for name, prefix in (("offline", "bar-demo"), ("model", "bar-model")):
+        with ZipFile(ROOT / "downloads" / f"bar-demo-{name}.zip") as bundle:
+            manifest = json.loads(bundle.read(f"{prefix}/manifest.json"))
+            assert manifest["format_version"] == 1
+            assert set(bundle.namelist()) == {
+                f"{prefix}/{path}" for path in [*manifest["files"], "manifest.json"]
+            }
+            for path, checksum in manifest["files"].items():
+                content = bundle.read(f"{prefix}/{path}")
+                assert hashlib.sha256(content).hexdigest() == checksum
+                if name == "offline" and path != "README.txt":
+                    assert content == (ROOT / "demo" / path).read_bytes()
+            if name == "model":
+                assert set(manifest["files"]) == {
+                    "bar.pt",
+                    "features.json",
+                    "config.json",
+                    "public_demo.json",
+                    "README.txt",
+                }
+                assert json.loads(bundle.read(f"{prefix}/public_demo.json")) == public_demo
+
+
+def test_released_checkpoint_reproduces_all_examples():
+    import subprocess
+    import sys
+
+    result = subprocess.run(
+        [sys.executable, str(ROOT / "scripts/predict_demo.py"), "--verify-all"],
+        cwd=ROOT,
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+    report = json.loads(result.stdout)
+    assert report["verified_episodes"] == 36
+    assert report["max_probability_error"] < 1e-6

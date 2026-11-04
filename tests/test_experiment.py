@@ -127,3 +127,31 @@ def test_reasoning_summary_counts_actual_budget_violations():
     }
     with pytest.raises(ValueError, match="empty evaluation"):
         summarize([])
+
+
+def test_json_preprocessing_matches_fitted_pipeline(tmp_path):
+    pytest.importorskip("sklearn")
+    import numpy as np
+
+    features = script("mimic_features")
+    train = [
+        {
+            "codes": ["4019"],
+            "history": ["25000"] if i % 2 else [],
+            "age": 40 + i,
+            "male": i % 2,
+            "stay_days": i + 1,
+            "labs": {"creatinine": [1 + i / 10, 0.7, 2]} if i % 3 else {},
+        }
+        for i in range(20)
+    ]
+    fitted = features.FeatureEncoder().fit(train)
+    destination = tmp_path / "features.json"
+    fitted.save(destination)
+    state = json.loads(destination.read_text())
+    frozen = features.FeatureEncoder.from_dict(state)
+    holdout = train + [{"codes": ["UNSEEN"], "history": []}]
+    np.testing.assert_array_equal(fitted.transform(holdout), frozen.transform(holdout))
+    state["numeric"]["scale"][0] = 0
+    with pytest.raises(ValueError, match="numeric transform"):
+        features.FeatureEncoder.from_dict(state)

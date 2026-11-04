@@ -55,6 +55,8 @@
     $("baseline").textContent = percent(trace.frozen_ehr_probability);
     $("baseline").title = `Recorded probability: ${trace.frozen_ehr_probability}`;
     $("risk-source").textContent = trace.fallback ? "EHR fallback" : "Evidence-aware score";
+    $("target-name").textContent = label(data.target);
+    $("target-horizon").textContent = `${state.horizon}-day horizon`;
     const spent = trace.steps.slice(0,state.step).reduce((s,t) => s+t.cost, 0);
     $("cost").innerHTML = `${spent.toFixed(1)} <small>/ ${trace.budget.toFixed(1)}</small>`;
     $("budget-fill").style.width = `${Math.min(100,spent/trace.budget*100)}%`;
@@ -96,35 +98,38 @@
     const result=output(), steps=result.trace.steps, shown=steps.slice(0,state.step);
     const accepted=new Set(shown.filter(s=>s.accepted).flatMap(s=>s.selected));
     const latest=new Set(shown.at(-1)?.accepted ? shown.at(-1).selected : []);
-    const candidates=new Set(state.step && state.step<steps.length ? steps[state.step-1].candidates : []);
-    const visible=result.edges.filter(e=>accepted.has(e.edge_id)||candidates.has(e.edge_id));
-    const nodes=new Set([data.target,...result.anchors,...visible.flatMap(e=>[e.head,e.tail])]);
-    const columns=[result.anchors.filter(n=>n!==data.target),[...nodes].filter(n=>n!==data.target&&!result.anchors.includes(n)),[data.target]];
+    const visible=result.edges.filter(e=>accepted.has(e.edge_id));
+    const nodes=new Set([...result.anchors,...visible.flatMap(e=>[e.head,e.tail])]);
+    const columns=[result.anchors.filter(n=>n!==data.target),[...nodes].filter(n=>n!==data.target&&!result.anchors.includes(n))];
+    if(nodes.has(data.target))columns.push([data.target]);
     const width=$("graph").clientWidth||600;
     const height=Math.max(355,Math.max(...columns.map(c=>c.length))*120+100);
     const positions=new Map();
     const inset = width<450 ? 62 : 77;
-    columns.forEach((col,i)=>col.forEach((n,j)=>positions.set(n,{x:inset+(width-2*inset)*i/2,y:45+(height-140)*(j+.5)/col.length,type:i})));
+    columns.forEach((col,i)=>col.forEach((n,j)=>positions.set(n,{x:inset+(width-2*inset)*i/Math.max(1,columns.length-1),y:45+(height-140)*(j+.5)/col.length,type:i})));
     const colors=["#377c94","#16775b","#c7705e"];
     let html=`<svg viewBox="0 0 ${width} ${height}" role="img" aria-label="Evidence graph at step ${state.step}"><defs><marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="#7d9f8b"/></marker></defs>`;
     visible.forEach((e,i)=>{
       const a=positions.get(e.head),b=positions.get(e.tail); if(!a||!b) return;
       const angle=Math.atan2(b.y-a.y,b.x-a.x),x1=a.x+22*Math.cos(angle),y1=a.y+22*Math.sin(angle),x2=b.x-25*Math.cos(angle),y2=b.y-25*Math.sin(angle);
-      const bend=a.type===b.type?65:0;
-      html+=`<path class="graph-edge ${accepted.has(e.edge_id)?"accepted":"current"} ${latest.has(e.edge_id)?"latest":""}" d="M${x1},${y1} Q${(x1+x2)/2+bend},${(y1+y2)/2-10} ${x2},${y2}" marker-end="url(#arrow)"><title>${escape(label(e.head))} → ${escape(relation(e.relation))} → ${escape(label(e.tail))}</title></path>`;
-      if(accepted.has(e.edge_id) && a.type!==b.type) html+=`<text class="edge-label" text-anchor="middle" x="${(x1+x2)/2+bend/2}" y="${(y1+y2)/2-13-i%2*9}">${escape(relation(e.relation).slice(0,23))}</text>`;
+      const path=a.type===b.type ? `M${a.x+22},${a.y} Q${a.x+70},${(a.y+b.y)/2} ${b.x+25},${b.y}` : `M${x1},${y1} Q${(x1+x2)/2},${(y1+y2)/2-10} ${x2},${y2}`;
+      html+=`<path class="graph-edge accepted ${latest.has(e.edge_id)?"latest":""}" d="${path}" marker-end="url(#arrow)"><title>${escape(label(e.head))} → ${escape(relation(e.relation))} → ${escape(label(e.tail))}</title></path>`;
+      if(a.type!==b.type) html+=`<text class="edge-label" text-anchor="middle" x="${(x1+x2)/2}" y="${(y1+y2)/2-13-i%2*9}">${escape(relation(e.relation).slice(0,23))}</text>`;
     });
     positions.forEach((p,id)=>{
       const lines=wrap(label(id),width<450?15:20);
-      html+=`<g><title>${escape(label(id))} (${escape(id)})</title><circle cx="${p.x}" cy="${p.y}" r="25" fill="white" stroke="${colors[p.type]}" stroke-opacity=".18"/><circle cx="${p.x}" cy="${p.y}" r="18" fill="${colors[p.type]}" fill-opacity=".09" stroke="${colors[p.type]}" stroke-width="1.4"/><circle cx="${p.x}" cy="${p.y}" r="4" fill="${colors[p.type]}"/><text class="node-label" x="${p.x}" y="${p.y+41}">${lines.map((s,i)=>`<tspan x="${p.x}" dy="${i?13:0}">${escape(s)}</tspan>`).join("")}</text></g>`;
+      html+=`<g data-node="${escape(id)}"><title>${escape(label(id))} (${escape(id)})</title><circle cx="${p.x}" cy="${p.y}" r="25" fill="white" stroke="${colors[p.type]}" stroke-opacity=".18"/><circle cx="${p.x}" cy="${p.y}" r="18" fill="${colors[p.type]}" fill-opacity=".09" stroke="${colors[p.type]}" stroke-width="1.4"/><circle cx="${p.x}" cy="${p.y}" r="4" fill="${colors[p.type]}"/><text class="node-label" x="${p.x}" y="${p.y+41}">${lines.map((s,i)=>`<tspan x="${p.x}" dy="${i?13:0}">${escape(s)}</tspan>`).join("")}</text></g>`;
     });
     html+='</svg>';
     if(!steps.length) html+='<div class="empty-graph">No linked evidence · EHR fallback</div>';
     else if(!state.step) html+='<div class="empty-graph">Initial anchors</div>';
     $("graph").innerHTML=html;
     $("graph").firstElementChild.style.height=`${height}px`;
-    const targetAcquired=result.edges.some(e=>accepted.has(e.edge_id) && (e.head===data.target || e.tail===data.target));
-    $("graph-status").textContent=`${accepted.size} acquired edges · ${result.trace.fallback ? "EHR fallback" : targetAcquired ? "Target in evidence" : "Target not acquired"}`;
+    const targetAcquired=visible.some(e=>e.head===data.target || e.tail===data.target);
+    $("target-legend").hidden=!nodes.has(data.target);
+    $("target-status").textContent=targetAcquired ? "Target in acquired evidence" : "No acquired target edge";
+    $("target-status").title=targetAcquired ? "An accepted edge includes the prediction target concept." : "The accepted evidence contains no edge incident to the prediction target concept.";
+    $("graph-status").textContent=`${accepted.size} acquired edges · ${state.step===steps.length ? (reasonLabels[result.trace.terminal_reason] || result.trace.terminal_reason) : `Step ${state.step}`}`;
   }
   document.querySelectorAll("[data-horizon]").forEach(b=>b.onclick=()=>{
     state.horizon=Number(b.dataset.horizon);
