@@ -25,9 +25,11 @@ def test_sdist_and_wheel_work_outside_checkout(tmp_path):
             "configs/bar_default.json",
             "scripts/predict_demo.py",
             "scripts/evaluate_mimic_demo.py",
+            "scripts/package_ckd_results.py",
             "scripts/run_mimic_demo.py",
             "scripts/mimic_features.py",
             "downloads/bar-demo-model.zip",
+            "downloads/bar-ckd-results.zip",
             "demo/vendor/lucide-LICENSE",
         }
         assert required <= names
@@ -69,6 +71,7 @@ def test_sdist_and_wheel_work_outside_checkout(tmp_path):
         ["-m", "bar.cli", "smoke", "--config", "configs/bar_default.json"],
         ["scripts/predict_demo.py", "--verify-all"],
         ["scripts/evaluate_mimic_demo.py", "--help"],
+        ["scripts/package_ckd_results.py", "--help"],
     ):
         subprocess.run(
             [sys.executable, *command],

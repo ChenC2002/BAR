@@ -4,4 +4,5 @@ recursive-include configs *.json
 recursive-include scripts *.py
 recursive-include tests *.py *.json *.md
 include downloads/bar-demo-offline.zip downloads/bar-demo-model.zip
+include downloads/bar-ckd-results.zip
 recursive-include assets *.png *.pdf

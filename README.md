@@ -24,6 +24,7 @@ frozen EHR baseline using an offline policy.
 | --- | --- | --- |
 | [Offline demo](https://github.com/ChenC2002/BAR/raw/refs/heads/main/downloads/bar-demo-offline.zip) | ~117 KB | Viewer, examples, 36 traces, and evaluation; open `index.html` |
 | [Model package](https://github.com/ChenC2002/BAR/raw/refs/heads/main/downloads/bar-demo-model.zip) | ~795 KB | Checkpoint, evidence graph, fitted JSON preprocessing, configuration, and examples |
+| [CKD results](https://github.com/ChenC2002/BAR/raw/refs/heads/main/downloads/bar-ckd-results.zip) | ~800 KB | Model package, per-run CSVs at 30/90/365 days, macro averages, and verified evaluation report (seed 7) |
 
 <details>
 <summary>Run locally (Python 3.11+)</summary>
@@ -89,6 +90,20 @@ results and a `reference_check`: matching results have `matches: true` within an
 absolute tolerance of `1e-6`. A different cohort or metric mismatch returns a
 nonzero exit code. Use the same MIMIC-III and diagnosis mapping exports as the
 original run; existing output files are not overwritten.
+
+Create a downloadable results package from the evaluation report:
+
+```bash
+python scripts/package_ckd_results.py \
+  --report artifacts/ckd-evaluation.json \
+  --out artifacts/bar-ckd-results.zip
+```
+
+The [released results ZIP](downloads/bar-ckd-results.zip) contains one trained run
+(seed 7), with BAR and its frozen EHR baseline at all three horizons. `per_run.csv`
+contains the horizon-specific metrics; `macro.csv` averages across horizons.
+The checkpoint-only evaluation was verified on the original data host in about
+3 minutes 21 seconds, with all checked aggregates exactly matching the demo.
 
 **Optional: train a new checkpoint.** This also requires `umls/umls.csv` and
 `umls/concept_names.txt` under the knowledge-mapping directory:
