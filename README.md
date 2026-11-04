@@ -2,7 +2,7 @@
 
 [![BAR overview: evidence graph construction, budget-aware reasoning, and training](assets/bar_overview.png)](assets/bar_overview.pdf)
 
-BAR combines electronic health records with source-backed medical knowledge to
+BAR (**B**udget-**A**ware LLM **R**easoning) combines electronic health records with source-backed medical knowledge to
 predict post-discharge disease risk. It assigns an uncertainty-based exploration
 budget, plans and verifies graph queries, and returns a prediction with a trace
 and citations. When evidence is insufficient, it returns the frozen EHR prediction.
