@@ -3,14 +3,19 @@
 from __future__ import annotations
 
 from collections import defaultdict
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
 from typing import Dict, Iterable, List, Sequence, Set, Tuple
 
 from bar.schemas import CohortSample, PatientVisit
 
 
 def parse_time(value: str) -> datetime:
-    return datetime.fromisoformat(value.replace("Z", "+00:00"))
+    timestamp = datetime.fromisoformat(value.replace("Z", "+00:00"))
+    return (
+        timestamp.replace(tzinfo=timezone.utc)
+        if timestamp.tzinfo is None
+        else timestamp.astimezone(timezone.utc)
+    )
 
 
 def build_first_onset_samples(
@@ -46,7 +51,9 @@ def build_first_onset_samples(
                 if target_codes & current_codes:
                     continue
 
-                anchors = [code_to_node[code] for code in visit.diagnosis_codes if code in code_to_node]
+                anchors = [
+                    code_to_node[code] for code in visit.diagnosis_codes if code in code_to_node
+                ]
                 for window_days in windows_days:
                     label = _has_future_onset(future, target_codes, discharge_time, window_days)
                     sample_id = f"{patient_id}:{visit.visit_id}:{target_id}:{window_days}"
@@ -74,15 +81,14 @@ def _has_future_onset(
     discharge_time: datetime,
     window_days: int,
 ) -> bool:
-    for visit in future_visits:
-        delta_days = (parse_time(visit.admit_time) - discharge_time).days
-        if delta_days < 0:
-            continue
-        if delta_days > window_days:
-            return False
-        if target_codes & set(visit.diagnosis_codes):
-            return True
-    return False
+    return any(
+        parse_time(visit.admit_time) > discharge_time
+        and discharge_time
+        < parse_time(visit.discharge_time)
+        <= discharge_time + timedelta(days=window_days)
+        and bool(target_codes & set(visit.diagnosis_codes))
+        for visit in future_visits
+    )
 
 
 def temporal_split_samples(
@@ -90,25 +96,35 @@ def temporal_split_samples(
     train_fraction: float = 0.7,
     valid_fraction: float = 0.1,
 ) -> Tuple[List[CohortSample], List[CohortSample], List[CohortSample]]:
-    """Chronologically split patient/index-admission groups.
+    """Order patients by earliest eligible discharge; keep every patient's rows together.
 
-    Cohort construction expands one index admission into multiple target-disease
-    and horizon rows. Splitting after expansion can place rows from the same
-    admission in different splits, so this function groups by patient, index
-    visit, and index time before applying temporal boundaries.
+    Fractions apply to patients. This explicit grouping convention prevents patient
+    overlap, but does not guarantee non-overlapping calendar ranges across splits.
     """
 
-    if train_fraction < 0.0 or valid_fraction < 0.0 or train_fraction + valid_fraction > 1.0:
-        raise ValueError("train_fraction and valid_fraction must be non-negative and sum to at most 1")
+    if not (
+        0 <= train_fraction <= 1
+        and 0 <= valid_fraction <= 1
+        and train_fraction + valid_fraction <= 1
+    ):
+        raise ValueError(
+            "train_fraction and valid_fraction must be non-negative and sum to at most 1"
+        )
 
-    grouped: Dict[Tuple[str, str, str], List[CohortSample]] = defaultdict(list)
+    grouped: Dict[str, List[CohortSample]] = defaultdict(list)
     for sample in samples:
-        key = (sample.patient_id, sample.index_visit_id, sample.index_time)
-        grouped[key].append(sample)
+        grouped[sample.patient_id].append(sample)
+
+    for group in grouped.values():
+        group.sort(key=lambda sample: (parse_time(sample.index_time), sample.sample_id))
 
     ordered_groups = sorted(
         grouped.values(),
-        key=lambda group: (parse_time(group[0].index_time), group[0].patient_id, group[0].index_visit_id),
+        key=lambda group: (
+            parse_time(group[0].index_time),
+            group[0].patient_id,
+            group[0].index_visit_id,
+        ),
     )
     n_groups = len(ordered_groups)
     train_end = int(n_groups * train_fraction)

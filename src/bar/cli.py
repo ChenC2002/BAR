@@ -1,94 +1,94 @@
-"""Command-line helpers for BAR."""
-
-from __future__ import annotations
+"""Small executable commands for prepared inputs and synthetic examples."""
 
 import argparse
 import json
-import sys
+from pathlib import Path
 
-from bar.kg.graph_store import InMemoryGraphStore
-from bar.prediction.predictor import HeuristicBARPredictor
-from bar.reasoning.loop import HeuristicReasoningPolicy, PlanNavigateVerifyLoop
-from bar.reasoning.query_engine import EvidenceGraphQueryEngine
-from bar.schemas import CohortSample, EvidenceGraph, ReasoningBudget
-from bar.training.stages import stage_plan_as_dicts
+from pydantic import TypeAdapter
+
+from bar.config import Config
+from bar.graph import GraphStore, refine_graph
+from bar.policy import DemoPolicy, LLMPolicy
+from bar.schemas import Case, TrainingCase
+from bar.training import load_checkpoint, save_checkpoint, train
 
 
-def main(argv: list[str] | None = None) -> int:
+def main() -> None:
     parser = argparse.ArgumentParser(prog="bar")
-    subparsers = parser.add_subparsers(dest="command", required=True)
-
-    validate = subparsers.add_parser("validate-evidence-graph")
+    commands = parser.add_subparsers(dest="command", required=True)
+    demo = commands.add_parser("demo", help="Train and run the offline synthetic example")
+    demo.add_argument("--graph", default="examples/tiny_evidence_graph.json")
+    demo.add_argument("--data", default="examples/tiny_cases.json")
+    demo.add_argument("--case", default="examples/tiny_case.json")
+    demo.add_argument("--out", help="Optional inference checkpoint")
+    demo.add_argument("--config")
+    training = commands.add_parser("train", help="Train on a JSON array of prepared training cases")
+    training.add_argument("--graph", required=True)
+    training.add_argument("--data", required=True)
+    training.add_argument("--out", required=True)
+    training.add_argument("--config")
+    predict = commands.add_parser("predict", help="Predict using a saved checkpoint")
+    predict.add_argument("--checkpoint", required=True)
+    predict.add_argument("--case", required=True)
+    for command in (training, predict):
+        command.add_argument("--policy", choices=["demo", "llm"], required=True)
+        command.add_argument("--model", help="Structured-output model ID for the LLM policy")
+        command.add_argument("--base-url", help="Optional compatible inference endpoint")
+    refine = commands.add_parser(
+        "refine", help="Refine a graph with precomputed support/provenance"
+    )
+    refine.add_argument("--graph", required=True)
+    refine.add_argument("--disease", required=True)
+    refine.add_argument("--anchor", action="append", required=True, help="Frequent TRAINING anchor")
+    refine.add_argument("--out", required=True)
+    refine.add_argument("--config")
+    validate = commands.add_parser("validate", help="Validate an evidence graph")
     validate.add_argument("--graph", required=True)
-
-    reasoning = subparsers.add_parser("demo-reasoning")
-    reasoning.add_argument("--graph", required=True)
-    reasoning.add_argument("--anchor", action="append", required=True)
-    reasoning.add_argument("--disease", required=True)
-    reasoning.add_argument("--horizon-days", type=int, default=90)
-    reasoning.add_argument("--ehr-score", type=float, default=0.5)
-    reasoning.add_argument("--max-budget", type=float, default=5.0)
-
-    subparsers.add_parser("show-training-stages")
-    args = parser.parse_args(argv)
-
-    if args.command == "validate-evidence-graph":
-        return _validate_graph(args.graph)
-    if args.command == "demo-reasoning":
-        return _demo_reasoning(args)
-    if args.command == "show-training-stages":
-        print(json.dumps(stage_plan_as_dicts(), indent=2))
-        return 0
-    return 1
-
-
-def _validate_graph(path: str) -> int:
-    with open(path, "r", encoding="utf-8") as handle:
-        graph = EvidenceGraph.from_dict(json.load(handle))
-    errors = graph.validate()
-    if errors:
-        print("\n".join(errors), file=sys.stderr)
-        return 2
-    print(f"valid graph: {len(graph.nodes)} nodes, {len(graph.edges)} edges")
-    return 0
-
-
-def _demo_reasoning(args: argparse.Namespace) -> int:
-    store = InMemoryGraphStore.load(args.graph)
-    budget = ReasoningBudget(max_budget=args.max_budget, total=args.max_budget)
-    query_engine = EvidenceGraphQueryEngine(store, budget)
-    sample = CohortSample(
-        sample_id="demo",
-        patient_id="demo",
-        index_visit_id="demo",
-        index_time="",
-        target_disease_id=args.disease,
-        window_days=args.horizon_days,
-        label=0,
-        diagnosis_codes=[],
-        history_codes=[],
-        anchor_node_ids=args.anchor,
-    )
-    loop = PlanNavigateVerifyLoop(
-        store=store,
-        query_engine=query_engine,
-        budget=budget,
-        policy=HeuristicReasoningPolicy(),
-    )
-    trace = loop.run(sample, ehr_only_score=args.ehr_score)
-    prediction = HeuristicBARPredictor().predict(sample, trace, store)
-    print(json.dumps({
-        "terminal_reason": trace.terminal_reason,
-        "patient_budget": trace.patient_budget,
-        "total_cost": trace.total_cost,
-        "reasoning_steps": trace.reasoning_steps,
-        "fallback": trace.fallback,
-        "evidence_edge_ids": trace.evidence_edge_ids,
-        "citation_edge_ids": trace.citation_edge_ids,
-        "risk_probability": prediction.probability,
-    }, indent=2))
-    return 0
+    args = parser.parse_args()
+    config = Config.load(args.config) if getattr(args, "config", None) else Config()
+    if args.command in ("validate", "refine"):
+        store = GraphStore.load(args.graph)
+        if args.command == "refine":
+            graph = refine_graph(store.graph, args.disease, args.anchor, config)
+            output_path = Path(args.out)
+            output_path.parent.mkdir(parents=True, exist_ok=True)
+            output_path.write_text(graph.model_dump_json(indent=2) + "\n", encoding="utf-8")
+        else:
+            print(f"valid graph: {len(store.nodes)} nodes, {len(store.edges)} edges")
+        return
+    policy = DemoPolicy()
+    if getattr(args, "policy", "demo") == "llm":
+        if not args.model:
+            parser.error("--model is required with --policy llm")
+        policy = LLMPolicy(args.model, base_url=args.base_url)
+    if args.command == "predict":
+        engine = load_checkpoint(args.checkpoint, policy)
+    else:
+        cases = TypeAdapter(list[TrainingCase]).validate_json(
+            Path(args.data).read_text(encoding="utf-8")
+        )
+        store = GraphStore.load(args.graph)
+        disease = store.graph.metadata.get("target_disease_id")
+        if not disease:
+            parser.error("graph metadata.target_disease_id is required")
+        engine, history = train(cases, {disease: store}, policy, config)
+        if args.out:
+            save_checkpoint(engine, args.out)
+        if args.command == "train":
+            print(
+                json.dumps(
+                    {"checkpoint": args.out, "policy": args.policy, "history": history}, indent=2
+                )
+            )
+            return
+    case = Case.model_validate_json(Path(args.case).read_text(encoding="utf-8"))
+    prediction = engine.predict(case)
+    output = prediction.model_dump()
+    if args.command == "demo":
+        output["mode"] = "synthetic data and offline policy; not a clinical prediction"
+        output["training_stages"] = sorted({item["stage"] for item in history})
+    print(json.dumps(output, indent=2))
 
 
 if __name__ == "__main__":
-    raise SystemExit(main())
+    main()

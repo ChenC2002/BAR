@@ -1,28 +1,32 @@
 [project]
 name = "bar-paper-code"
-version = "0.1.0"
-description = "Code scaffold for budget-aware LLM reasoning over medical knowledge graphs."
-requires-python = ">=3.9"
-dependencies = []
+version = "0.2.0"
+description = "Core algorithms for budget-aware reasoning over medical knowledge graphs."
+requires-python = ">=3.11"
+dependencies = ["torch>=2.6,<3", "numpy>=1.26,<3", "pydantic>=2.10,<3", "networkx>=3.4,<4"]
 
 [project.optional-dependencies]
-full = [
-  "torch>=2.2",
-  "numpy>=1.26",
-  "pandas>=2.2",
-  "scikit-learn>=1.4",
-  "networkx>=3.2",
-  "rank-bm25>=0.2.2",
-  "transformers>=4.40",
-  "openai>=1.0"
-]
+llm = ["openai>=1.60,<3"]
+dev = ["pytest>=8,<10", "ruff>=0.9"]
 
 [project.scripts]
 bar = "bar.cli:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]
+namespaces = false
 
 [build-system]
 requires = ["setuptools>=68"]
 build-backend = "setuptools.build_meta"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]
+
+[tool.ruff]
+target-version = "py311"
+line-length = 100
+
+[tool.ruff.lint]
+select = ["E4", "E7", "E9", "F", "I"]

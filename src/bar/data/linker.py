@@ -23,7 +23,9 @@ class ICDToPrimeKGLinker:
         self.cui_to_primekg = cui_to_primekg
 
     @classmethod
-    def from_csv(cls, icd_to_cui_csv: str | Path, cui_to_primekg_csv: str | Path) -> "ICDToPrimeKGLinker":
+    def from_csv(
+        cls, icd_to_cui_csv: str | Path, cui_to_primekg_csv: str | Path
+    ) -> "ICDToPrimeKGLinker":
         return cls(
             icd_to_cui=_read_two_column_csv(icd_to_cui_csv),
             cui_to_primekg=_read_two_column_csv(cui_to_primekg_csv),
@@ -56,5 +58,9 @@ def _read_two_column_csv(path: str | Path) -> Dict[str, str]:
         rows = list(reader)
     if not rows:
         return {}
-    start = 1 if any(cell.lower() in {"icd", "code", "cui", "primekg_node_id"} for cell in rows[0]) else 0
+    start = (
+        1
+        if any(cell.lower() in {"icd", "code", "cui", "primekg_node_id"} for cell in rows[0])
+        else 0
+    )
     return {row[0]: row[1] for row in rows[start:] if len(row) >= 2}

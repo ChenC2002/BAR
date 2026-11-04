@@ -1,0 +1,10 @@
+[
+  {"sample_id":"train1","disease_id":"CKD","horizon_days":90,"ehr_features":[1,0,0.2,0.1],"anchor_ids":["DIABETES","HTN"],"label":0},
+  {"sample_id":"train2","disease_id":"CKD","horizon_days":90,"ehr_features":[1,1,0.8,0.9],"anchor_ids":["DIABETES","HTN"],"label":1},
+  {"sample_id":"train3","disease_id":"CKD","horizon_days":90,"ehr_features":[0,1,0.3,0.2],"anchor_ids":["HTN"],"label":0},
+  {"sample_id":"train4","disease_id":"CKD","horizon_days":90,"ehr_features":[1,0,0.9,0.8],"anchor_ids":["DIABETES"],"label":1},
+  {"sample_id":"train5","disease_id":"CKD","horizon_days":90,"ehr_features":[1,1,0.1,0.3],"anchor_ids":["DIABETES","HTN"],"label":0},
+  {"sample_id":"train6","disease_id":"CKD","horizon_days":90,"ehr_features":[0,1,0.7,0.8],"anchor_ids":["HTN"],"label":1},
+  {"sample_id":"train7","disease_id":"CKD","horizon_days":90,"ehr_features":[1,0,0.4,0.2],"anchor_ids":["DIABETES"],"label":0},
+  {"sample_id":"train8","disease_id":"CKD","horizon_days":90,"ehr_features":[1,1,0.9,0.7],"anchor_ids":["DIABETES","HTN"],"label":1}
+]

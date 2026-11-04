@@ -9,3 +9,7 @@ build/
 /data/
 /artifacts/
 /results/
+.pytest_cache/
+.ruff_cache/
+.env
+*.pt

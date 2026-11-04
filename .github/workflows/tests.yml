@@ -1,0 +1,16 @@
+name: Tests
+on: [push, pull_request]
+jobs:
+  core:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: pip install ".[dev,llm]"
+      - run: ruff check src tests
+      - run: ruff format --check src tests
+      - run: pytest -q
+      - run: bar validate --graph examples/tiny_evidence_graph.json
+      - run: bar demo --config configs/bar_default.json
