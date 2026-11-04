@@ -1,49 +1,54 @@
 # Cite What You Explore: Budget-Aware LLM Reasoning over Medical KGs with Verifiable Evidence
 
-[![BAR overview: evidence graph construction, budget-aware reasoning, and training](assets/bar_overview.png)](assets/bar_overview.pdf)
-
-BAR (**B**udget-**A**ware LLM **R**easoning) combines electronic health records with source-backed medical knowledge to
+BAR (**B**udget-**A**ware LLM **R**easoning) combines electronic health records with
+source-backed medical knowledge to
 predict post-discharge disease risk. It assigns an uncertainty-based exploration
 budget, plans and verifies graph queries, and returns a prediction with a trace
 and citations. When evidence is insufficient, it returns the frozen EHR prediction.
 
-[Live Demo](https://chenc2002.github.io/BAR/demo/) · [Method Map](#method-map) · [Quick Start](#quick-start) · [Data](#data) · [Workflow](#workflow)
+[Method](#method) · [Quick Start](#quick-start) · [Live Demo](https://chenc2002.github.io/BAR/demo/) · [Data](#data) · [Workflow](#workflow)
 
-## Demo
+[![BAR overview: evidence graph construction, budget-aware reasoning, and training](assets/bar_overview.png)](assets/bar_overview.pdf)
 
-[**Open the interactive demo**](https://chenc2002.github.io/BAR/demo/)
+## Method
 
-[![BAR Evidence Explorer](assets/bar_demo.png)](https://chenc2002.github.io/BAR/demo/)
+Given a patient's EHR, a target disease, and a prediction horizon, BAR acquires
+a bounded set of knowledge-graph evidence and uses it to predict post-discharge risk.
 
-Explore three CKD examples across 30/90/365-day horizons, vary the budget, and
-replay evidence acquisition. Results come from a MIMIC-III run with **30,803
-patients**, a UMLS graph, and an offline policy. **Experiment** compares BAR with
-its frozen Stage-1 EHR-only MLP baseline (32 hidden units).
+### 1. Construct the Evidence Graph
 
-| Download | Size | Contents |
-| --- | --- | --- |
-| [Offline demo](https://github.com/ChenC2002/BAR/raw/refs/heads/main/downloads/bar-demo-offline.zip) | ~115 KB | Viewer, example inputs, 36 recorded traces, and evaluation; open `index.html` |
-| [Model package](https://github.com/ChenC2002/BAR/raw/refs/heads/main/downloads/bar-demo-model.zip) | ~793 KB | Trained checkpoint, evidence graph, fitted JSON preprocessing, configuration, and examples |
+Build a disease-specific graph around paths from EHR-linked anchors to the target.
+Refinement limits high-degree hubs, filters relations by source support and
+provenance, groups equivalent edges, and prepares expansion guides.
 
-After installing BAR, reproduce the recorded examples locally:
+### 2. Reason within a Budget
 
-```bash
-python scripts/predict_demo.py --verify-all
-python scripts/predict_demo.py --case example-diabetes --horizon 90 --budget auto
-```
+The frozen EHR predictor supplies uncertainty. A training-fitted, task-specific
+empirical distribution maps that uncertainty to an exploration budget.
 
-## Method Map
+A plan guides queries from patient anchors through the acquired evidence frontier.
+The router chooses queries, candidate edges are ranked and selected, and verification
+checks evidence before it is accepted. Failed steps can trigger plan revision;
+budget, evidence-capacity, and quality conditions determine when exploration stops.
+
+### 3. Predict and Learn
+
+Quality-weighted evidence representations are fused with the EHR representation
+to predict risk. The output includes source-backed citations and the acquisition
+trace. Insufficient evidence triggers the frozen EHR prediction with no citations.
+
+Training first fits the EHR predictor and freezes its budget and fallback reference.
+Uniform-routing warm-up is followed by REINFORCE routing and supervised predictor
+updates. Policy rewards combine paired predictive gains, exploration cost, and
+citation integrity; paired gains use the same current predictor with and without evidence.
+
+### Code Map
 
 | Stage | Code | What it does |
 | --- | --- | --- |
 | **Evidence Graph Construction** | [`graph.py`](src/bar/graph.py) | Refine disease-specific graphs using source support, provenance, and equivalent-edge groups |
 | **Budget-Aware Reasoning** | [`budget.py`](src/bar/budget.py), [`reasoning.py`](src/bar/reasoning.py), [`policy.py`](src/bar/policy.py) | Assign uncertainty-based budgets; plan, navigate, verify, revise, and stop |
-| **Prediction and Training** | [`model.py`](src/bar/model.py), [`training.py`](src/bar/training.py) | Pool acquired evidence, predict risk, and train with supervised loss and paired-gain policy rewards |
-
-Training first fits the EHR predictor and freezes its budget and fallback
-reference. Uniform-routing warm-up precedes REINFORCE routing with supervised
-predictor updates. Paired gains compare predictions with and without evidence
-under the same current model.
+| **Prediction and Training** | [`model.py`](src/bar/model.py), [`training.py`](src/bar/training.py) | Fuse EHR and evidence, learn query routing, and save inference checkpoints |
 
 ## Quick Start
 
@@ -55,11 +60,38 @@ cd BAR
 python3 -m venv .venv
 source .venv/bin/activate
 python -m pip install .
-bar demo
 ```
 
-`bar demo` opens the Evidence Explorer. Use `bar demo --no-open` to print its
-location without launching a browser.
+Run the included checkpoint on an example and verify all 36 recorded episodes:
+
+```bash
+python scripts/predict_demo.py --case example-diabetes --horizon 90 --budget auto
+python scripts/predict_demo.py --verify-all
+```
+
+Dependencies are defined in [pyproject.toml](pyproject.toml).
+`python -m pip install -r requirements.txt` installs the same package.
+
+## Demo
+
+[**Open the interactive demo**](https://chenc2002.github.io/BAR/demo/), or run
+`bar demo` after installation.
+
+Explore three CKD examples across 30/90/365-day horizons, vary the budget, and replay
+evidence acquisition. The experiment view compares BAR with its frozen Stage-1
+EHR-only MLP baseline using the [MIMIC-III run](#mimic-iii-experiment) and an offline policy.
+
+<details>
+<summary>Demo preview</summary>
+
+[![BAR Evidence Explorer](assets/bar_demo.png)](https://chenc2002.github.io/BAR/demo/)
+
+</details>
+
+| Download | Size | Contents |
+| --- | --- | --- |
+| [Offline demo](https://github.com/ChenC2002/BAR/raw/refs/heads/main/downloads/bar-demo-offline.zip) | ~115 KB | Viewer, examples, 36 traces, and evaluation; open `index.html` |
+| [Model package](https://github.com/ChenC2002/BAR/raw/refs/heads/main/downloads/bar-demo-model.zip) | ~793 KB | Checkpoint, evidence graph, fitted JSON preprocessing, configuration, and examples |
 
 ## Data
 
@@ -77,38 +109,6 @@ consistent across training and prediction. Optional `diagnosis_codes` and
 `history_codes` provide context for the reasoning policy. Prepare vocabulary,
 source statistics, imputation, and scaling from training data only; keep each
 patient in one partition.
-
-### MIMIC-III
-
-The CKD runner uses ICD-9 `585*` and 30/90/365-day first-recorded diagnosis
-outcomes after discharge. It combines current and historical diagnosis codes,
-demographics, and pre-discharge laboratory summaries. Model selection uses
-validation macro average precision, early stopping, and two preset configurations.
-
-Required resources:
-
-| Directory | Files |
-| --- | --- |
-| MIMIC-III | `ADMISSIONS.csv`, `PATIENTS.csv`, `ICUSTAYS.csv`, `DIAGNOSES_ICD.csv`, `LABEVENTS.csv` |
-| Knowledge mapping | `ICD9CM_to_UMLS.csv`, `umls/umls.csv`, `umls/concept_names.txt` |
-
-Run on a machine with authorized data access:
-
-```bash
-python -m pip install ".[experiment]"
-python scripts/run_mimic_demo.py \
-  --data /path/to/MIMICIII/data \
-  --kg /path/to/KG_mapping \
-  --out artifacts/ckd-run --patients 40000
-```
-
-The output includes the checkpoint, fitted feature transform, model-selection
-record, and evaluation. Keep record-level outputs on the data host. To refresh
-the viewer, export only the aggregate results and example cases:
-
-```bash
-python scripts/export_demo.py artifacts/ckd-run/public_demo.json --out demo/data.js
-```
 
 ## Workflow
 
@@ -162,3 +162,39 @@ Use the same policy options with `bar train` for LLM-guided exploration.
 outputs. LLM weights stay frozen; the query router is learned locally. Diagnosis
 context and graph evidence are sent to the endpoint, so use only data and services
 permitted by your data-use agreements. Labels and numerical EHR features are not sent.
+
+## MIMIC-III Experiment
+
+The released checkpoint comes from a CKD run with **30,803 patients**, a UMLS
+evidence graph, an offline policy, and a 32-hidden-unit MLP. The runner uses ICD-9
+`585*` and 30/90/365-day first-recorded diagnosis outcomes after discharge, combining
+diagnosis history, demographics, and pre-discharge laboratory summaries.
+
+Patients are assigned to train/validation/test groups in a 70/10/20 ratio, ordered
+by earliest eligible discharge. Vocabulary, feature transforms, graph anchors,
+and uncertainty distributions are fitted using training data. Checkpoint selection
+uses validation macro average precision, early stopping, and two preset configurations;
+the selected checkpoint is then evaluated on the held-out test set.
+
+| Resource | Required files |
+| --- | --- |
+| MIMIC-III | `ADMISSIONS.csv`, `PATIENTS.csv`, `ICUSTAYS.csv`, `DIAGNOSES_ICD.csv`, `LABEVENTS.csv` |
+| Knowledge mapping | `ICD9CM_to_UMLS.csv`, `umls/umls.csv`, `umls/concept_names.txt` |
+
+Run on a machine with authorized data access:
+
+```bash
+python -m pip install ".[experiment]"
+python scripts/run_mimic_demo.py \
+  --data /path/to/MIMICIII/data \
+  --kg /path/to/KG_mapping \
+  --out artifacts/ckd-run --patients 40000
+```
+
+The run produces `bar.pt`, `features.json`, the selected configuration, and
+evaluation results. Keep record-level outputs on the data host. To update the
+viewer from the aggregate results and example cases:
+
+```bash
+python scripts/export_demo.py artifacts/ckd-run/public_demo.json --out demo/data.js
+```

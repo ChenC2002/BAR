@@ -7,19 +7,22 @@ dependencies = ["torch>=2.6,<3", "numpy>=1.26,<3", "pydantic>=2.10,<3", "network
 
 [project.optional-dependencies]
 llm = ["openai>=1.60,<3"]
-dev = ["pytest>=8,<10", "ruff>=0.9"]
+dev = ["pytest>=8,<10", "ruff>=0.9", "build>=1.2,<2"]
 experiment = ["scikit-learn>=1.5,<2"]
 
 [project.scripts]
 bar = "bar.cli:main"
 
-[tool.setuptools.packages.find]
-where = ["src"]
-namespaces = false
+[tool.setuptools]
+packages = ["bar", "bar.data", "bar._demo"]
+include-package-data = false
 
-[tool.setuptools.data-files]
-"share/bar/demo" = ["demo/index.html", "demo/styles.css", "demo/app.js", "demo/data.js"]
-"share/bar/demo/vendor" = ["demo/vendor/lucide.min.js", "demo/vendor/lucide-LICENSE"]
+[tool.setuptools.package-dir]
+"" = "src"
+"bar._demo" = "demo"
+
+[tool.setuptools.package-data]
+"bar._demo" = ["*.html", "*.css", "*.js", "vendor/*.js", "vendor/*LICENSE"]
 
 [build-system]
 requires = ["setuptools>=68"]

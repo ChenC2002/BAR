@@ -118,6 +118,25 @@ def test_empty_training_data_rejected(store):
         train([], {"CKD": store}, DemoPolicy(), Config())
 
 
+@pytest.mark.parametrize("problem", ["unknown_task", "features", "single_class"])
+def test_invalid_validation_data_rejected_before_training(store, case, problem):
+    cases = [TrainingCase(**case.model_dump(), label=1)]
+    validation = [
+        cases[0].model_copy(update={"sample_id": f"validation-{i}", "label": i}) for i in (0, 1)
+    ]
+    if problem == "unknown_task":
+        validation[0].horizon_days = 1000
+        message = "validation tasks"
+    elif problem == "features":
+        validation[0].ehr_features = [1.0]
+        message = "feature layout"
+    else:
+        validation[0].label = 1
+        message = "both classes"
+    with pytest.raises(ValueError, match=message):
+        train(cases, {"CKD": store}, DemoPolicy(), Config(), validation_cases=validation)
+
+
 def test_batched_logits_match_individual_predictions_and_gradients(engine, case):
     cases = [case, case.model_copy(update={"ehr_features": [0, 1, 0.2, 0.8]})]
     expected = torch.stack([engine.model.raw_logit(c) for c in cases])

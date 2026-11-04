@@ -31,6 +31,8 @@ def rows(path):
 
 
 def prepare(root, max_patients, seed):
+    if max_patients <= 0:
+        raise ValueError("--patients must be positive")
     patients = {r["SUBJECT_ID"]: r for r in rows(root / "PATIENTS.csv")}
     icu = {r["HADM_ID"] for r in rows(root / "ICUSTAYS.csv")}
     admissions = {}
@@ -105,6 +107,10 @@ def prepare(root, max_patients, seed):
         name: [r for pid in ids for r in eligible[pid]]
         for name, ids in zip(("train", "validation", "test"), partitions)
     }
+    if any(not records for records in split.values()):
+        raise ValueError(
+            "Empty train/validation/test partition; increase --patients or check eligibility."
+        )
     summary = {
         name: {
             "patients": len(ids),
@@ -183,7 +189,7 @@ def measure(labels, scores):
 
     return {
         "auroc": float(roc_auc_score(labels, scores)) if len(set(labels)) == 2 else None,
-        "ap": float(average_precision_score(labels, scores)) if sum(labels) else None,
+        "ap": float(average_precision_score(labels, scores)) if len(set(labels)) == 2 else None,
         "brier": float(brier_score_loss(labels, scores)),
     }
 
@@ -213,7 +219,6 @@ def reasoning_summary(traces):
 
 
 def main():
-    import joblib
     from mimic_features import FeatureEncoder, add_laboratories
 
     parser = argparse.ArgumentParser()
@@ -238,7 +243,6 @@ def main():
         for records in split.values()
         for r, features in zip(records, encoder.transform(records), strict=True)
     }
-    joblib.dump(encoder, args.out / "features.joblib")
     encoder.save(args.out / "features.json")
     config = Config(
         seed=args.seed,
@@ -286,8 +290,6 @@ def main():
         name: [convert(r, h) for r in records for h in HORIZONS] for name, records in split.items()
     }
     (args.out / "cohort.json").write_text(json.dumps(split))
-    (args.out / "feature_layout.json").write_text(json.dumps(encoder.vocabulary))
-    (args.out / "config.json").write_text(config.model_dump_json(indent=2))
     print(
         json.dumps(
             {

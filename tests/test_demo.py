@@ -89,6 +89,12 @@ def test_readme_local_links_resolve():
 def test_live_demo_entry_and_clean_display():
     readme = (ROOT / "README.md").read_text()
     assert "[**Open the interactive demo**](https://chenc2002.github.io/BAR/demo/)" in readme
+    assert (
+        readme.index("## Method\n") < readme.index("## Quick Start\n") < readme.index("## Demo\n")
+    )
+    assert (
+        readme.index("<details>") < readme.index("assets/bar_demo.png") < readme.index("</details>")
+    )
     assert "[Release]" not in readme
     html = (ROOT / "demo/index.html").read_text()
     assert "Manually defined example" not in html
@@ -100,13 +106,74 @@ def test_demo_assets_are_packaged():
     import tomllib
 
     config = tomllib.loads((ROOT / "pyproject.toml").read_text())
+    settings = config["tool"]["setuptools"]
+    base = ROOT / settings["package-dir"]["bar._demo"]
     packaged = {
-        path for paths in config["tool"]["setuptools"]["data-files"].values() for path in paths
+        path for pattern in settings["package-data"]["bar._demo"] for path in base.glob(pattern)
     }
     html = (ROOT / "demo/index.html").read_text()
     references = re.findall(r'(?:src|href)="([^"#]+\.(?:js|css))"', html)
-    assert {f"demo/{path}" for path in references} <= packaged
-    assert all((ROOT / path).is_file() for path in packaged)
+    assert {ROOT / "demo" / path for path in references} <= packaged
+    assert all(path.is_file() for path in packaged)
+
+
+@pytest.mark.parametrize(
+    "field", ["provenance", "reason", "utility", "probability", "edges", "nodes"]
+)
+def test_replay_verifies_citation_contents_and_complete_trace(
+    public_demo, tmp_path, monkeypatch, field
+):
+    monkeypatch.syspath_prepend(str(ROOT / "scripts"))
+    from mimic_features import FeatureEncoder
+    from predict_demo import read_bundle, verify
+
+    from bar.policy import DemoPolicy
+    from bar.training import load_checkpoint
+
+    files = read_bundle(ROOT / "downloads/bar-demo-model.zip")
+    checkpoint = tmp_path / "bar.pt"
+    checkpoint.write_bytes(files["bar.pt"])
+    engine = load_checkpoint(checkpoint, DemoPolicy())
+    encoder = FeatureEncoder.from_dict(json.loads(files["features.json"]))
+    recorded = next(iter(public_demo["cases"][0]["outputs"].values()))
+    if field == "provenance":
+        recorded["citations"][0]["provenance"][0]["source_id"] = "altered"
+    elif field == "probability":
+        recorded["probability"] = float("nan")
+    elif field == "edges":
+        recorded["edges"].pop()
+    elif field == "nodes":
+        recorded["nodes"][0]["name"] = "altered"
+    else:
+        recorded["trace"]["steps"][0][field] = "altered" if field == "reason" else 100.0
+    with pytest.raises(ValueError, match="Replay mismatch"):
+        verify(engine, encoder, public_demo)
+
+
+def test_failed_model_packaging_preserves_existing_downloads(tmp_path, monkeypatch):
+    monkeypatch.syspath_prepend(str(ROOT / "scripts"))
+    from package_demo import build
+
+    destination = tmp_path / "downloads"
+    destination.mkdir()
+    for name in ("bar-demo-offline.zip", "bar-demo-model.zip"):
+        (destination / name).write_bytes(b"previous release")
+    with pytest.raises(FileNotFoundError):
+        build(destination, tmp_path / "missing-model")
+    assert {path.name for path in destination.iterdir()} == {
+        "bar-demo-offline.zip",
+        "bar-demo-model.zip",
+    }
+    assert all(path.read_bytes() == b"previous release" for path in destination.iterdir())
+
+
+def test_replay_comparison_does_not_treat_booleans_as_numbers(monkeypatch):
+    monkeypatch.syspath_prepend(str(ROOT / "scripts"))
+    from predict_demo import assert_match
+
+    for actual, expected in ((1.0, True), (True, 1)):
+        with pytest.raises(ValueError, match="Replay mismatch"):
+            assert_match(actual, expected, "value")
 
 
 def test_downloads_match_sources_and_checksums(public_demo):

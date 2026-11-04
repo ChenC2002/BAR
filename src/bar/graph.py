@@ -101,10 +101,10 @@ def refine_graph(
             for n in (edge.head, edge.tail)
         ):
             continue
-        used.update((edge.head, edge.tail))
         score = support_score(edge)
         if score < config.support_threshold or not edge.provenance:
             continue
+        used.update((edge.head, edge.tail))
         # Exact directed triples are the conservative default. Curated semantic
         # groups can be supplied by the caller; relation categories are not synonyms.
         group = edge.equiv_group_id or f"eq:{edge.head}|{edge.relation}|{edge.tail}"

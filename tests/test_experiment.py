@@ -48,6 +48,8 @@ def test_cohort_keeps_no_followup_and_splits_patients_before_horizons(tmp_path):
     assert [len(group) for group in groups] == [7, 1, 2]
     assert not groups[0] & groups[1] | groups[0] & groups[2] | groups[1] & groups[2]
     assert summary["eligible_admissions"] == 20
+    with pytest.raises(ValueError, match="Empty train/validation/test"):
+        script("run_mimic_demo").prepare(tmp_path, 1, 7)
     for records in split.values():
         for row in records:
             assert "5859" not in row["codes"]
@@ -57,6 +59,12 @@ def test_cohort_keeps_no_followup_and_splits_patients_before_horizons(tmp_path):
                 assert row["labels"]["30"] == int(row["id"].endswith("-1"))
                 assert row["labels"]["90"] == row["labels"]["365"] == 1
             assert row["history"] == (["4019"] if row["id"].endswith("-1") else [])
+
+
+@pytest.mark.parametrize("limit", [0, -1])
+def test_cohort_rejects_nonpositive_patient_limit(tmp_path, limit):
+    with pytest.raises(ValueError, match="must be positive"):
+        script("run_mimic_demo").prepare(tmp_path, limit, 7)
 
 
 def test_demo_export_rejects_patient_fields_and_nonexample_ids(tmp_path):
@@ -127,6 +135,15 @@ def test_reasoning_summary_counts_actual_budget_violations():
     }
     with pytest.raises(ValueError, match="empty evaluation"):
         summarize([])
+
+
+@pytest.mark.parametrize("labels", [[0, 0], [1, 1]])
+def test_single_class_metrics_match_model_selection(labels):
+    pytest.importorskip("sklearn")
+    metrics = script("run_mimic_demo").measure(labels, [0.2, 0.8])
+    assert metrics["ap"] is None
+    assert metrics["auroc"] is None
+    assert metrics["brier"] == pytest.approx(0.34)
 
 
 def test_json_preprocessing_matches_fitted_pipeline(tmp_path):

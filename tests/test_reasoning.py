@@ -205,3 +205,39 @@ def test_plan_cannot_jump_to_undiscovered_nodes(engine, case):
     trace = engine.rollout(case).trace
     assert trace.terminal_reason == "no_actions"
     assert trace.total_cost == 0
+
+
+def test_seen_edges_do_not_consume_prefilter_slots(engine, case, monkeypatch):
+    engine.config.reasoning.prefilter_cap = 1
+    monkeypatch.setattr(
+        engine.model, "quality", lambda edge, state: state.new_tensor(edge.support_score)
+    )
+    trace = engine.rollout(case).trace
+    assert len(trace.evidence_ids) == 3
+    assert all(step.candidates and step.accepted for step in trace.steps)
+    assert trace.total_cost == 3.5
+
+
+def test_provenance_free_edges_cannot_be_acquired(engine, case, store):
+    for edge in store.edges.values():
+        edge.provenance.clear()
+    prediction = engine.predict(case)
+    assert prediction.trace.fallback
+    assert prediction.trace.evidence_ids == []
+    assert prediction.citations == []
+    assert prediction.trace.total_cost == 0
+
+
+def test_guide_query_respects_plan_relations(engine, case):
+    class Restricted(DemoPolicy):
+        def complete(self, operation, payload, schema):
+            result = super().complete(operation, payload, schema)
+            if operation == "plan":
+                result.steps[0].relations = ["associated_with"]
+            return result
+
+    engine.policy = Restricted()
+    trace = engine.rollout(case).trace
+    assert trace.terminal_reason == "no_actions"
+    assert trace.evidence_ids == []
+    assert trace.total_cost == 0

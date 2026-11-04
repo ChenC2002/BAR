@@ -3,6 +3,7 @@
 import argparse
 import hashlib
 import json
+import tempfile
 from pathlib import Path
 from zipfile import ZIP_DEFLATED, ZipFile, ZipInfo
 
@@ -39,9 +40,7 @@ def build(destination, model_run):
     viewer["README.txt"] = (
         b"BAR Evidence Explorer\nOpen index.html in a browser. No server or installation is required.\n"
     )
-    sizes = {
-        "bar-demo-offline.zip": archive(destination / "bar-demo-offline.zip", "bar-demo", viewer)
-    }
+    packages = {"bar-demo-offline.zip": ("bar-demo", viewer)}
     if model_run:
         import torch
         from mimic_features import FeatureEncoder
@@ -95,9 +94,16 @@ def build(destination, model_run):
             "UMLS content remains subject to its source license terms:\n"
             "https://www.nlm.nih.gov/research/umls/faq_main.html\n"
         ).encode()
-        sizes["bar-demo-model.zip"] = archive(
-            destination / "bar-demo-model.zip", "bar-model", files
-        )
+        packages["bar-demo-model.zip"] = ("bar-model", files)
+    destination.mkdir(parents=True, exist_ok=True)
+    with tempfile.TemporaryDirectory(dir=destination) as directory:
+        staged = Path(directory)
+        sizes = {
+            name: archive(staged / name, folder, files)
+            for name, (folder, files) in packages.items()
+        }
+        for name in packages:
+            (staged / name).replace(destination / name)
     print(json.dumps(sizes, indent=2))
     return sizes
 

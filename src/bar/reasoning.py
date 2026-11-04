@@ -80,12 +80,19 @@ class BAR:
                 ]
             )
             for action in options:
-                if any(
-                    e.support_score >= self.config.support_threshold and e.group not in seen
-                    for e in store.query(action)
-                ):
+                if self._available_edges(action, step, store, seen):
                     actions.append(action)
         return actions
+
+    def _available_edges(self, action, step, store, seen):
+        return [
+            edge
+            for edge in store.query(action)
+            if edge.group not in seen
+            and edge.support_score >= self.config.support_threshold
+            and edge.provenance
+            and (not step.relations or edge.relation in step.relations)
+        ]
 
     def rollout(
         self, case: Case, mode: Literal["greedy", "uniform", "sample"] = "greedy"
@@ -137,10 +144,10 @@ class BAR:
                 result.log_probabilities.append(distribution.log_prob(chosen))
             action = actions[int(chosen)]
             ranked = sorted(
-                store.query(action),
+                self._available_edges(action, step, store, seen),
                 key=lambda e: (-self.model.quality(e, state).detach().item(), e.edge_id),
             )
-            candidates = [e for e in ranked[: cfg.prefilter_cap] if e.group not in seen]
+            candidates = ranked[: cfg.prefilter_cap]
             payload = self._context(case, store, trace, frontier)
             payload.update(
                 step=step.model_dump(),

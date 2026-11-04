@@ -1,2 +1,4 @@
-# Dependency definitions live in pyproject.toml.
+# Install BAR and its core dependencies from pyproject.toml (the single source of truth).
+# From the repository root: python -m pip install -r requirements.txt
+# For experiments or development: python -m pip install ".[experiment,dev]"
 .

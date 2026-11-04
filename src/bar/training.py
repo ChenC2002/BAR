@@ -82,7 +82,14 @@ def train(
             raise ValueError("validation cases must not be empty")
         if {c.sample_id for c in cases} & {c.sample_id for c in validation_cases}:
             raise ValueError("training and validation sample IDs must be disjoint")
-    for case in cases:
+        if {c.task for c in validation_cases} - {c.task for c in cases}:
+            raise ValueError("validation tasks must be present in training")
+        validation_labels = defaultdict(set)
+        for case in validation_cases:
+            validation_labels[case.task].add(case.label)
+        if not any(labels == {0, 1} for labels in validation_labels.values()):
+            raise ValueError("validation requires at least one task with both classes")
+    for case in cases + (validation_cases or []):
         if case.disease_id not in stores or case.disease_id not in stores[case.disease_id].nodes:
             raise ValueError(f"missing disease graph for {case.disease_id}")
         if len(case.ehr_features) != len(cases[0].ehr_features):

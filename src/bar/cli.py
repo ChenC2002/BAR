@@ -2,8 +2,8 @@
 
 import argparse
 import json
-import sys
 import webbrowser
+from importlib.resources import files
 from pathlib import Path
 
 from pydantic import TypeAdapter
@@ -54,13 +54,11 @@ def main() -> None:
     validate.add_argument("--graph", required=True)
     args = parser.parse_args()
     if args.command == "demo":
-        locations = [
-            Path.cwd() / "demo/index.html",
-            Path(__file__).resolve().parents[2] / "demo/index.html",
-            Path(sys.prefix) / "share/bar/demo/index.html",
-        ]
-        page = next((path for path in locations if path.is_file()), None)
-        if page is None:
+        try:
+            page = Path(str(files("bar._demo").joinpath("index.html")))
+        except ModuleNotFoundError:
+            page = Path(__file__).resolve().parents[2] / "demo/index.html"
+        if not page.is_file():
             parser.error("demo assets are missing; reinstall BAR or run from the repository")
         print(page.resolve())
         if not args.no_open and not webbrowser.open(page.resolve().as_uri()):

@@ -60,6 +60,31 @@ def predict(engine, encoder, public, example, horizon, budget):
         engine.config = original
 
 
+def assert_match(actual, expected, path):
+    if isinstance(actual, dict) and isinstance(expected, dict) and actual.keys() == expected.keys():
+        for key in actual:
+            assert_match(actual[key], expected[key], f"{path}.{key}")
+        return
+    if isinstance(actual, list) and isinstance(expected, list) and len(actual) == len(expected):
+        for index, (value, reference) in enumerate(zip(actual, expected, strict=True)):
+            assert_match(value, reference, f"{path}[{index}]")
+        return
+    if (
+        isinstance(actual, float)
+        and isinstance(expected, (int, float))
+        and not isinstance(expected, bool)
+    ):
+        if (
+            math.isfinite(actual)
+            and math.isfinite(expected)
+            and math.isclose(actual, expected, rel_tol=0, abs_tol=1e-6)
+        ):
+            return
+    elif type(actual) is type(expected) and actual == expected:
+        return
+    raise ValueError(f"Replay mismatch: {path}")
+
+
 def verify(engine, encoder, public):
     count = 0
     largest_error = 0.0
@@ -69,23 +94,32 @@ def verify(engine, encoder, public):
             actual = predict(engine, encoder, public, example, int(horizon), budget)
             error = abs(actual.probability - recorded["probability"])
             largest_error = max(largest_error, error)
-            if error > 1e-6:
-                raise ValueError(f"Prediction mismatch: {example['id']} / {key}")
-            for field in ("evidence_ids", "citation_ids", "fallback", "terminal_reason"):
-                if getattr(actual.trace, field) != recorded["trace"][field]:
-                    raise ValueError(f"Trace mismatch ({field}): {example['id']} / {key}")
-            if len(actual.trace.steps) != len(recorded["trace"]["steps"]):
-                raise ValueError(f"Step count mismatch: {example['id']} / {key}")
-            for step, expected in zip(actual.trace.steps, recorded["trace"]["steps"], strict=True):
-                values = step.model_dump()
-                for field in ("query", "candidates", "selected", "accepted", "cost"):
-                    if values[field] != expected[field]:
-                        raise ValueError(f"Acquisition mismatch ({field}): {example['id']} / {key}")
-            for field in ("budget", "total_cost", "frozen_ehr_probability"):
-                if not math.isclose(
-                    getattr(actual.trace, field), recorded["trace"][field], abs_tol=1e-6
-                ):
-                    raise ValueError(f"Trace value mismatch ({field}): {example['id']} / {key}")
+            values = actual.model_dump()
+            assert_match(
+                values,
+                {field: recorded[field] for field in values},
+                f"{example['id']} / {key}",
+            )
+            store = engine.stores[public["target"]]
+            ids = {
+                eid for step in actual.trace.steps for eid in step.candidates + step.selected
+            } | set(actual.trace.citation_ids)
+            edges = [store.edges[eid] for eid in sorted(ids)]
+            nodes = {
+                public["target"],
+                *recorded["anchors"],
+                *(node for edge in edges for node in (edge.head, edge.tail)),
+            }
+            assert_match(
+                [edge.model_dump() for edge in edges],
+                recorded["edges"],
+                f"{example['id']} / {key}.edges",
+            )
+            assert_match(
+                [store.nodes[node].model_dump() for node in sorted(nodes)],
+                recorded["nodes"],
+                f"{example['id']} / {key}.nodes",
+            )
             count += 1
     return {"verified_episodes": count, "max_probability_error": largest_error}
 

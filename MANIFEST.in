@@ -1,0 +1,6 @@
+include requirements.txt
+recursive-include configs *.json
+recursive-include scripts *.py
+recursive-include tests *.py *.json *.md
+include downloads/bar-demo-offline.zip downloads/bar-demo-model.zip
+recursive-include assets *.png *.pdf

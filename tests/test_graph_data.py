@@ -47,6 +47,19 @@ def test_refinement_retains_paths_but_not_dangling_cycle():
     assert refine_graph(graph, "D", [], Config()).edges == []
 
 
+@pytest.mark.parametrize("rejection", ["low_support", "no_provenance"])
+def test_rejected_edges_do_not_consume_hub_retention_quota(rejection):
+    edges = [edge(str(i), "A", "D", metadata={"prior_score": 1 - i / 10}) for i in range(3)]
+    for rejected in edges[:2]:
+        if rejection == "low_support":
+            rejected.support_score = 0.1
+        else:
+            rejected.provenance.clear()
+    graph = EvidenceGraph(nodes=[Node(node_id=n) for n in ("A", "D")], edges=edges)
+    config = Config(graph={"degree_cap": 1, "hub_edge_cap": 2})
+    assert [e.edge_id for e in refine_graph(graph, "D", ["A"], config).edges] == ["2"]
+
+
 def test_schema_rejects_bad_graph_references_and_duplicate_ids(store):
     data = store.graph.model_dump()
     data["nodes"].append(data["nodes"][0])
