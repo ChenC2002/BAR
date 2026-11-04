@@ -24,7 +24,7 @@ frozen EHR baseline using an offline policy.
 | --- | --- | --- |
 | [Offline demo](https://github.com/ChenC2002/BAR/raw/refs/heads/main/downloads/bar-demo-offline.zip) | ~117 KB | Viewer, examples, 36 traces, and evaluation; open `index.html` |
 | [Model package](https://github.com/ChenC2002/BAR/raw/refs/heads/main/downloads/bar-demo-model.zip) | ~795 KB | Checkpoint, evidence graph, fitted JSON preprocessing, configuration, and examples |
-| [CKD results](https://github.com/ChenC2002/BAR/raw/refs/heads/main/downloads/bar-ckd-results.zip) | ~800 KB | Model package, per-run CSVs at 30/90/365 days, macro averages, and verified evaluation report (seed 7) |
+| [CKD results](https://github.com/ChenC2002/BAR/raw/refs/heads/main/downloads/bar-ckd-results.zip) | ~800 KB | Model package, per-run CSVs at 30/90/365 days, macro averages, and verified evaluation report |
 
 <details>
 <summary>Run locally (Python 3.11+)</summary>
