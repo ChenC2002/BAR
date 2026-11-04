@@ -1,9 +1,9 @@
 {
-  "sample_id": "synthetic_prediction",
+  "sample_id": "example_prediction",
   "disease_id": "CKD",
   "horizon_days": 90,
   "ehr_features": [1, 0, 0.65, 0.55],
   "anchor_ids": ["DIABETES"],
-  "diagnosis_codes": ["synthetic:diabetes"],
+  "diagnosis_codes": ["example:diabetes"],
   "history_codes": []
 }

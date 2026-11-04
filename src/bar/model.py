@@ -105,6 +105,20 @@ class BARModel(nn.Module):
         ehr = self.encode(case)
         return self.logit(ehr, torch.zeros_like(ehr), case)
 
+    def raw_logits(self, cases: list[Case]) -> Tensor:
+        """Vectorized EHR-only forward pass for training and evaluation batches."""
+        if not cases:
+            raise ValueError("cases must not be empty")
+        if any(len(c.ehr_features) != self.spec["input_dim"] for c in cases):
+            raise ValueError("ehr_features length does not match model input_dim")
+        features = torch.tensor(
+            [c.ehr_features for c in cases], dtype=torch.float32, device=self.device
+        )
+        tasks = torch.tensor([self.task_index[c.task] for c in cases], device=self.device)
+        ehr = self.ehr_encoder(features)
+        fused = self.fusion(torch.cat((ehr, torch.zeros_like(ehr)), dim=-1))
+        return (fused * self.heads(tasks)).sum(-1) + self.bias(tasks).squeeze(-1)
+
 
 class QueryRouter(nn.Module):
     """Small trainable query policy; LLM weights remain frozen."""

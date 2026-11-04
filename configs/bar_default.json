@@ -20,6 +20,8 @@
     "stop_patience": 2
   },
   "training": {
+    "batch_size": 32,
+    "episodes_per_round": 4096,
     "baseline_epochs": 10,
     "warmup_epochs": 3,
     "policy_epochs": 3,

@@ -65,7 +65,7 @@ def test_integrity_is_binary_and_checks_every_citation(engine, store):
 
 def test_three_training_stages_change_weights_and_checkpoint_roundtrip(store, case, tmp_path):
     cases = TypeAdapter(list[TrainingCase]).validate_json(
-        (ROOT / "examples/tiny_cases.json").read_text()
+        (ROOT / "tests/fixtures/tiny_cases.json").read_text()
     )
     cfg = Config(
         training=TrainingConfig(baseline_epochs=2, warmup_epochs=1, policy_epochs=2),
@@ -102,7 +102,7 @@ def test_three_training_stages_change_weights_and_checkpoint_roundtrip(store, ca
 
 def test_multiple_targets_have_distinct_heads_and_cdfs(store, tmp_path):
     cases = TypeAdapter(list[TrainingCase]).validate_json(
-        (ROOT / "examples/tiny_cases.json").read_text()
+        (ROOT / "tests/fixtures/tiny_cases.json").read_text()
     )
     cases += [
         c.model_copy(update={"horizon_days": 365, "sample_id": c.sample_id + "long"}) for c in cases
@@ -116,3 +116,84 @@ def test_multiple_targets_have_distinct_heads_and_cdfs(store, tmp_path):
 def test_empty_training_data_rejected(store):
     with pytest.raises(ValueError, match="must not be empty"):
         train([], {"CKD": store}, DemoPolicy(), Config())
+
+
+def test_batched_logits_match_individual_predictions_and_gradients(engine, case):
+    cases = [case, case.model_copy(update={"ehr_features": [0, 1, 0.2, 0.8]})]
+    expected = torch.stack([engine.model.raw_logit(c) for c in cases])
+    actual = engine.model.raw_logits(cases)
+    torch.testing.assert_close(actual, expected)
+    actual.sum().backward()
+    batch_gradient = engine.model.ehr_encoder[0].weight.grad.clone()
+    engine.model.zero_grad()
+    expected.sum().backward()
+    torch.testing.assert_close(batch_gradient, engine.model.ehr_encoder[0].weight.grad)
+
+
+def test_minibatches_include_tail_and_limit_reasoning_rounds(store):
+    cases = TypeAdapter(list[TrainingCase]).validate_json(
+        (ROOT / "tests/fixtures/tiny_cases.json").read_text()
+    )[:7]
+    cfg = Config(
+        training=TrainingConfig(
+            baseline_epochs=1,
+            warmup_epochs=1,
+            policy_epochs=1,
+            batch_size=3,
+            episodes_per_round=5,
+        )
+    )
+    engine, history = train(cases, {"CKD": store}, DemoPolicy(), cfg)
+    assert len(engine.budgets.uncertainties[cases[0].task]) == 7
+    assert [row["episodes"] for row in history if row["stage"] != "ehr_only"] == [5, 5]
+    assert all(torch.isfinite(torch.tensor(row["loss"])) for row in history)
+
+
+def test_validation_early_stopping_and_training_only_budget_cdf(store, monkeypatch):
+    import bar.training as training
+
+    cases = TypeAdapter(list[TrainingCase]).validate_json(
+        (ROOT / "tests/fixtures/tiny_cases.json").read_text()
+    )
+    validation = [c.model_copy(update={"sample_id": "validation-" + c.sample_id}) for c in cases]
+    scores = iter([1.0, 0.8, 0.7, 0.6, 0.5])
+    monkeypatch.setattr(training, "macro_average_precision", lambda *_: next(scores))
+    cfg = Config(
+        training=TrainingConfig(
+            baseline_epochs=10,
+            patience=2,
+            warmup_epochs=1,
+            policy_epochs=1,
+            episodes_per_round=4,
+            finetune_lr=0.00001,
+        )
+    )
+    engine, history = train(cases, {"CKD": store}, DemoPolicy(), cfg, validation_cases=validation)
+    assert len([row for row in history if row["stage"] == "ehr_only"]) == 3
+    assert len(engine.budgets.uncertainties[cases[0].task]) == len(cases)
+    assert all("validation_ap" in row for row in history)
+    monkeypatch.setattr(training, "macro_average_precision", lambda *_: 1.0)
+    one_epoch = cfg.model_copy(
+        update={"training": cfg.training.model_copy(update={"baseline_epochs": 1})}
+    )
+    reference, _ = train(
+        cases, {"CKD": store}, DemoPolicy(), one_epoch, validation_cases=validation
+    )
+    for actual, expected in zip(engine.baseline.parameters(), reference.baseline.parameters()):
+        torch.testing.assert_close(actual, expected)
+    with pytest.raises(ValueError, match="disjoint"):
+        train(cases, {"CKD": store}, DemoPolicy(), cfg, validation_cases=cases)
+
+
+def test_macro_average_precision_is_task_macro_not_pooled():
+    pytest.importorskip("sklearn")
+    from bar.training import macro_average_precision
+
+    cases = TypeAdapter(list[TrainingCase]).validate_json(
+        (ROOT / "tests/fixtures/tiny_cases.json").read_text()
+    )
+    positive = next(c for c in cases if c.label == 1)
+    negative = next(c for c in cases if c.label == 0)
+    first = [positive, negative]
+    second = [c.model_copy(update={"horizon_days": 365}) for c in first]
+    assert macro_average_precision(first + second, [0.9, 0.1, 0.1, 0.9]) == pytest.approx(0.75)

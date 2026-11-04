@@ -17,12 +17,12 @@ ROOT = Path(__file__).resolve().parents[1]
 
 @pytest.fixture
 def store():
-    return GraphStore.load(ROOT / "examples/tiny_evidence_graph.json")
+    return GraphStore.load(ROOT / "tests/fixtures/tiny_evidence_graph.json")
 
 
 @pytest.fixture
 def case():
-    return Case.model_validate_json((ROOT / "examples/tiny_case.json").read_text())
+    return Case.model_validate_json((ROOT / "tests/fixtures/tiny_case.json").read_text())
 
 
 @pytest.fixture

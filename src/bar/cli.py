@@ -1,11 +1,14 @@
-"""Small executable commands for prepared inputs and synthetic examples."""
+"""Small executable commands for prepared inputs and examples."""
 
 import argparse
 import json
+import sys
+import webbrowser
 from pathlib import Path
 
 from pydantic import TypeAdapter
 
+from bar import __version__
 from bar.config import Config
 from bar.graph import GraphStore, refine_graph
 from bar.policy import DemoPolicy, LLMPolicy
@@ -15,11 +18,16 @@ from bar.training import load_checkpoint, save_checkpoint, train
 
 def main() -> None:
     parser = argparse.ArgumentParser(prog="bar")
+    parser.add_argument("--version", action="version", version=f"BAR {__version__}")
     commands = parser.add_subparsers(dest="command", required=True)
-    demo = commands.add_parser("demo", help="Train and run the offline synthetic example")
-    demo.add_argument("--graph", default="examples/tiny_evidence_graph.json")
-    demo.add_argument("--data", default="examples/tiny_cases.json")
-    demo.add_argument("--case", default="examples/tiny_case.json")
+    viewer = commands.add_parser("demo", help="Open the recorded CKD demo in a browser")
+    viewer.add_argument(
+        "--no-open", action="store_true", help="Print the viewer path without opening it"
+    )
+    demo = commands.add_parser("smoke", help="Run the small regression fixtures from a checkout")
+    demo.add_argument("--graph", default="tests/fixtures/tiny_evidence_graph.json")
+    demo.add_argument("--data", default="tests/fixtures/tiny_cases.json")
+    demo.add_argument("--case", default="tests/fixtures/tiny_case.json")
     demo.add_argument("--out", help="Optional inference checkpoint")
     demo.add_argument("--config")
     training = commands.add_parser("train", help="Train on a JSON array of prepared training cases")
@@ -45,6 +53,19 @@ def main() -> None:
     validate = commands.add_parser("validate", help="Validate an evidence graph")
     validate.add_argument("--graph", required=True)
     args = parser.parse_args()
+    if args.command == "demo":
+        locations = [
+            Path.cwd() / "demo/index.html",
+            Path(__file__).resolve().parents[2] / "demo/index.html",
+            Path(sys.prefix) / "share/bar/demo/index.html",
+        ]
+        page = next((path for path in locations if path.is_file()), None)
+        if page is None:
+            parser.error("demo assets are missing; reinstall BAR or run from the repository")
+        print(page.resolve())
+        if not args.no_open and not webbrowser.open(page.resolve().as_uri()):
+            parser.error("no browser was found; open the printed HTML path manually")
+        return
     config = Config.load(args.config) if getattr(args, "config", None) else Config()
     if args.command in ("validate", "refine"):
         store = GraphStore.load(args.graph)
@@ -84,8 +105,8 @@ def main() -> None:
     case = Case.model_validate_json(Path(args.case).read_text(encoding="utf-8"))
     prediction = engine.predict(case)
     output = prediction.model_dump()
-    if args.command == "demo":
-        output["mode"] = "synthetic data and offline policy; not a clinical prediction"
+    if args.command == "smoke":
+        output["mode"] = "example data and offline policy"
         output["training_stages"] = sorted({item["stage"] for item in history})
     print(json.dumps(output, indent=2))
 

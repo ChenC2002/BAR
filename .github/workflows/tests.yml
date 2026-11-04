@@ -8,9 +8,10 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
-      - run: pip install ".[dev,llm]"
-      - run: ruff check src tests
-      - run: ruff format --check src tests
+      - run: pip install ".[dev,llm,experiment]"
+      - run: ruff check src tests scripts
+      - run: ruff format --check src tests scripts
       - run: pytest -q
-      - run: bar validate --graph examples/tiny_evidence_graph.json
-      - run: bar demo --config configs/bar_default.json
+      - run: bar validate --graph tests/fixtures/tiny_evidence_graph.json
+      - run: bar smoke --config configs/bar_default.json
+      - run: bar demo --no-open

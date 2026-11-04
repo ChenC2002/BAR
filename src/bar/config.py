@@ -40,10 +40,15 @@ class ReasoningConfig(Record):
 
 
 class TrainingConfig(Record):
+    batch_size: int = Field(default=32, ge=1)
+    episodes_per_round: int = Field(default=4096, ge=1)
     baseline_epochs: int = Field(default=10, ge=1)
     warmup_epochs: int = Field(default=3, ge=1)
     policy_epochs: int = Field(default=3, ge=1)
     predictor_lr: float = Field(default=0.001, gt=0)
+    finetune_lr: float | None = Field(default=None, gt=0)
+    weight_decay: float = Field(default=0.01, ge=0)
+    patience: int = Field(default=6, ge=1)
     policy_lr: float = Field(default=0.001, gt=0)
     gain_weight: float = Field(default=1, ge=0)
     cost_weight: float = Field(default=0.1, ge=0)

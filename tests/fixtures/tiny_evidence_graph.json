@@ -1,0 +1,15 @@
+{
+  "nodes": [
+    {"node_id": "DIABETES", "name": "Diabetes", "node_type": "condition"},
+    {"node_id": "HTN", "name": "Hypertension", "node_type": "condition"},
+    {"node_id": "RENAL_DAMAGE", "name": "Renal damage", "node_type": "condition"},
+    {"node_id": "CKD", "name": "Chronic kidney disease", "node_type": "target_disease"}
+  ],
+  "edges": [
+    {"edge_id": "e_diabetes_renal", "head": "DIABETES", "relation": "contributes_to", "tail": "RENAL_DAMAGE", "support_score": 0.9, "equiv_group_id": "g1", "provenance": [{"source_id": "example:1", "title": "Example provenance record"}]},
+    {"edge_id": "e_renal_ckd", "head": "RENAL_DAMAGE", "relation": "associated_with", "tail": "CKD", "support_score": 0.85, "equiv_group_id": "g2", "provenance": [{"source_id": "example:2"}]},
+    {"edge_id": "e_htn_ckd", "head": "HTN", "relation": "risk_factor_for", "tail": "CKD", "support_score": 0.8, "equiv_group_id": "g3", "provenance": [{"source_id": "example:3"}]}
+  ],
+  "expansion_guide": {"DIABETES": ["e_diabetes_renal"], "HTN": ["e_htn_ckd"]},
+  "metadata": {"target_disease_id": "CKD", "description": "Example graph for the BAR workflow."}
+}

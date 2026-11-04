@@ -69,7 +69,7 @@ class LLMPolicy:
 
 
 class DemoPolicy:
-    """Offline control-flow fixture, not a clinical or semantic verifier."""
+    """Deterministic offline policy for example workflows and tests."""
 
     def complete(self, operation: str, payload: dict, schema: type[Response]) -> Response:
         if operation == "plan":

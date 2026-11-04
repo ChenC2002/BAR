@@ -1,6 +1,6 @@
 [project]
 name = "bar-paper-code"
-version = "0.2.0"
+version = "2.0.0"
 description = "Core algorithms for budget-aware reasoning over medical knowledge graphs."
 requires-python = ">=3.11"
 dependencies = ["torch>=2.6,<3", "numpy>=1.26,<3", "pydantic>=2.10,<3", "networkx>=3.4,<4"]
@@ -8,6 +8,7 @@ dependencies = ["torch>=2.6,<3", "numpy>=1.26,<3", "pydantic>=2.10,<3", "network
 [project.optional-dependencies]
 llm = ["openai>=1.60,<3"]
 dev = ["pytest>=8,<10", "ruff>=0.9"]
+experiment = ["scikit-learn>=1.5,<2"]
 
 [project.scripts]
 bar = "bar.cli:main"
@@ -15,6 +16,10 @@ bar = "bar.cli:main"
 [tool.setuptools.packages.find]
 where = ["src"]
 namespaces = false
+
+[tool.setuptools.data-files]
+"share/bar/demo" = ["demo/index.html", "demo/styles.css", "demo/app.js", "demo/data.js"]
+"share/bar/demo/vendor" = ["demo/vendor/lucide.min.js", "demo/vendor/lucide-LICENSE"]
 
 [build-system]
 requires = ["setuptools>=68"]

@@ -3,6 +3,16 @@ import json
 from bar.cli import main
 
 
+def test_version(monkeypatch, capsys):
+    import pytest
+
+    monkeypatch.setattr("sys.argv", ["bar", "--version"])
+    with pytest.raises(SystemExit) as raised:
+        main()
+    assert raised.value.code == 0
+    assert capsys.readouterr().out.strip() == "BAR 2.0.0"
+
+
 def test_prepared_input_commands(tmp_path, monkeypatch, capsys):
     graph = tmp_path / "new-directory" / "graph.json"
     checkpoint = tmp_path / "checkpoints" / "model.pt"
@@ -15,7 +25,7 @@ def test_prepared_input_commands(tmp_path, monkeypatch, capsys):
     run(
         "refine",
         "--graph",
-        "examples/tiny_evidence_graph.json",
+        "tests/fixtures/tiny_evidence_graph.json",
         "--disease",
         "CKD",
         "--anchor",
@@ -32,7 +42,7 @@ def test_prepared_input_commands(tmp_path, monkeypatch, capsys):
             "--graph",
             graph,
             "--data",
-            "examples/tiny_cases.json",
+            "tests/fixtures/tiny_cases.json",
             "--policy",
             "demo",
             "--config",
@@ -48,7 +58,7 @@ def test_prepared_input_commands(tmp_path, monkeypatch, capsys):
             "--checkpoint",
             checkpoint,
             "--case",
-            "examples/tiny_case.json",
+            "tests/fixtures/tiny_case.json",
             "--policy",
             "demo",
         )
@@ -58,14 +68,21 @@ def test_prepared_input_commands(tmp_path, monkeypatch, capsys):
     assert not prediction["trace"]["fallback"]
 
 
-def test_demo_checkpoint_matches_prediction(tmp_path, monkeypatch, capsys):
+def test_smoke_checkpoint_matches_prediction(tmp_path, monkeypatch, capsys):
     checkpoint = tmp_path / "demo.pt"
     monkeypatch.setattr(
         "sys.argv",
-        ["bar", "demo", "--config", "configs/bar_default.json", "--out", str(checkpoint)],
+        ["bar", "smoke", "--config", "configs/bar_default.json", "--out", str(checkpoint)],
     )
     main()
     demo = json.loads(capsys.readouterr().out)
+    assert demo["mode"] == "example data and offline policy"
+    assert demo["trace"]["sample_id"] == "example_prediction"
+    assert all(
+        source["source_id"].startswith("example:")
+        for edge in demo["citations"]
+        for source in edge["provenance"]
+    )
     monkeypatch.setattr(
         "sys.argv",
         [
@@ -74,7 +91,7 @@ def test_demo_checkpoint_matches_prediction(tmp_path, monkeypatch, capsys):
             "--checkpoint",
             str(checkpoint),
             "--case",
-            "examples/tiny_case.json",
+            "tests/fixtures/tiny_case.json",
             "--policy",
             "demo",
         ],
@@ -83,3 +100,18 @@ def test_demo_checkpoint_matches_prediction(tmp_path, monkeypatch, capsys):
     prediction = json.loads(capsys.readouterr().out)
     assert prediction["probability"] == demo["probability"]
     assert prediction["trace"] == demo["trace"]
+
+
+def test_demo_opens_recorded_viewer(monkeypatch, capsys):
+    from pathlib import Path
+
+    opened = []
+    monkeypatch.setattr("bar.cli.webbrowser.open", lambda url: opened.append(url) or True)
+    monkeypatch.setattr("sys.argv", ["bar", "demo"])
+    main()
+    page = Path(capsys.readouterr().out.strip())
+    assert page.name == "index.html" and page.is_file()
+    assert opened == [page.as_uri()]
+    monkeypatch.setattr("sys.argv", ["bar", "demo", "--no-open"])
+    main()
+    assert len(opened) == 1
