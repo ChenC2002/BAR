@@ -86,6 +86,16 @@ def test_readme_local_links_resolve():
             assert (ROOT / target.split("#")[0]).is_file(), target
 
 
+def test_live_demo_entry_and_clean_display():
+    readme = (ROOT / "README.md").read_text()
+    assert "[**Open the interactive demo**](https://chenc2002.github.io/BAR/demo/)" in readme
+    assert "[Release]" not in readme
+    html = (ROOT / "demo/index.html").read_text()
+    assert "Manually defined example" not in html
+    assert 'id="run-date"' not in html
+    assert '$("run-date")' not in (ROOT / "demo/app.js").read_text()
+
+
 def test_demo_assets_are_packaged():
     import tomllib
 

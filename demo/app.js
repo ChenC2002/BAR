@@ -151,7 +151,6 @@
     const url=URL.createObjectURL(blob),a=document.createElement("a");a.href=url;a.download=`bar-example-${state.horizon}d.json`;a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);
   };
   const summary=data.summary;
-  $("run-date").textContent=new Date(summary.created_at).toLocaleDateString("en-US",{year:"numeric",month:"short",day:"numeric"});
   $("cohort-stats").innerHTML=[["Training admissions",summary.cohort.train.admissions],["Validation admissions",summary.cohort.validation.admissions],["Test admissions",summary.cohort.test.admissions],["Evidence edges",summary.graph.edges]].map(([name,value])=>`<div><span>${name}</span><strong>${number(value)}</strong></div>`).join("");
   const models=[["ehr","EHR baseline"],["bar","BAR · offline policy"]];
   $("metric-table").innerHTML=summary.metrics.flatMap(row=>models.map(([id,name],i)=>`<tr class="${i===0?"group-first":""} ${id==="bar"?"bar-row":""}"><td>${i===0?row.horizon+" days":""}</td><td>${i===0?number(row.samples):""}</td><td>${i===0?number(row.positives)+" / "+percent(row.prevalence):""}</td><td>${name}</td><td>${percent(row[id].auroc)}</td><td>${percent(row[id].ap)}</td></tr>`)).join("");

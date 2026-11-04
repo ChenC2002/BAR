@@ -1,7 +1,5 @@
 # Cite What You Explore: Budget-Aware LLM Reasoning over Medical KGs with Verifiable Evidence
 
-**V2.0** · [Release](https://github.com/ChenC2002/BAR/tree/V2.0)
-
 [![BAR overview: evidence graph construction, budget-aware reasoning, and training](assets/bar_overview.png)](assets/bar_overview.pdf)
 
 BAR combines electronic health records with source-backed medical knowledge to
@@ -9,20 +7,22 @@ predict post-discharge disease risk. It assigns an uncertainty-based exploration
 budget, plans and verifies graph queries, and returns a prediction with a trace
 and citations. When evidence is insufficient, it returns the frozen EHR prediction.
 
-[Demo](#demo) · [Method Map](#method-map) · [Quick Start](#quick-start) · [Data](#data) · [Workflow](#workflow)
+[Live Demo](https://chenc2002.github.io/BAR/demo/) · [Method Map](#method-map) · [Quick Start](#quick-start) · [Data](#data) · [Workflow](#workflow)
 
 ## Demo
 
-[![BAR Evidence Explorer](assets/bar_demo.png)](demo/index.html)
+[**Open the interactive demo**](https://chenc2002.github.io/BAR/demo/)
 
-The [Evidence Explorer](demo/index.html) includes three example cases with
+[![BAR Evidence Explorer](assets/bar_demo.png)](https://chenc2002.github.io/BAR/demo/)
+
+The [Evidence Explorer](https://chenc2002.github.io/BAR/demo/) includes three example cases with
 30-, 90-, and 365-day predictions. Change the budget, replay evidence acquisition,
 inspect source records, and download a trace. The **Experiment** view includes
 per-horizon results and three-task macro averages for BAR and the EHR baseline.
 
 Predictions come from a recorded MIMIC-III CKD experiment with **30,803 patients**,
-a patient-disjoint split, and a UMLS evidence graph. The viewer uses manually
-defined examples and the trained checkpoint's recorded outputs with an offline
+a patient-disjoint split, and a UMLS evidence graph. The viewer uses example
+cases and the trained checkpoint's recorded outputs with an offline
 policy. It contains aggregate evaluation results and example inputs, not patient
 records. These are research scores, not clinical recommendations.
 
@@ -32,9 +32,21 @@ EHR features and task heads as BAR, and no graph evidence. Its checkpoint is
 selected by validation macro average precision, then frozen for comparison,
 budget allocation, and fallback.
 
-After cloning or downloading the repository, open `demo/index.html` locally.
-The viewer works offline and needs no API key, dataset, or Python installation.
-GitHub displays HTML as source; use the local file to interact with it.
+The online viewer needs no API key, dataset, or Python installation. For offline
+use, clone or download the repository and open `demo/index.html` locally.
+
+### Included Files
+
+| File | Contents |
+| --- | --- |
+| [`demo/data.js`](demo/data.js) | Three example inputs, 36 recorded prediction/trace combinations, retrieved graph nodes and edges, source records, and aggregate test metrics |
+| [`scripts/run_mimic_demo.py`](scripts/run_mimic_demo.py) | CKD cohort preparation, training, evaluation, and public demo export |
+| [`scripts/mimic_features.py`](scripts/mimic_features.py) | Diagnosis, demographic, and pre-discharge lab feature preparation |
+| [`scripts/export_demo.py`](scripts/export_demo.py) | Package the public export for the viewer, with patient-field checks |
+
+Trained weights (`bar.pt`), fitted preprocessing (`features.joblib`), and
+patient-level MIMIC records remain on the data host and are not bundled in this
+repository. The browser reads recorded outputs and does not load a checkpoint.
 
 ## Method Map
 
@@ -108,7 +120,7 @@ python scripts/run_mimic_demo.py \
 
 The output includes the checkpoint, fitted feature transform, model-selection
 record, and evaluation. Keep record-level outputs on the data host. To refresh
-the viewer, export only the aggregate results and manually defined examples:
+the viewer, export only the aggregate results and example cases:
 
 ```bash
 python scripts/export_demo.py artifacts/ckd-run/public_demo.json --out demo/data.js
