@@ -68,12 +68,32 @@ the selected checkpoint is then evaluated on the held-out test set.
 | Resource | Required files |
 | --- | --- |
 | MIMIC-III | `ADMISSIONS.csv`, `PATIENTS.csv`, `ICUSTAYS.csv`, `DIAGNOSES_ICD.csv`, `LABEVENTS.csv` |
-| Knowledge mapping | `ICD9CM_to_UMLS.csv`, `umls/umls.csv`, `umls/concept_names.txt` |
+| Knowledge mapping | `ICD9CM_to_UMLS.csv` from the original mapping export |
 
-Run on a machine with authorized data access:
+**Evaluate the released checkpoint without training** on a machine with authorized
+data access. The model package already includes the evidence graph and fitted
+preprocessing; no LLM API or raw UMLS graph is needed:
 
 ```bash
 python -m pip install ".[experiment]"
+python scripts/evaluate_mimic_demo.py \
+  --data /path/to/MIMICIII/data \
+  --mapping /path/to/KG_mapping/ICD9CM_to_UMLS.csv \
+  --out artifacts/ckd-evaluation.json
+```
+
+This rebuilds the recorded split and recomputes the Experiment tab's 30/90/365-day
+AUROC, average precision, Brier score, macro averages, validation AP, and budget
+statistics for BAR and its frozen EHR baseline. The JSON report contains aggregate
+results and a `reference_check`: matching results have `matches: true` within an
+absolute tolerance of `1e-6`. A different cohort or metric mismatch returns a
+nonzero exit code. Use the same MIMIC-III and diagnosis mapping exports as the
+original run; existing output files are not overwritten.
+
+**Optional: train a new checkpoint.** This also requires `umls/umls.csv` and
+`umls/concept_names.txt` under the knowledge-mapping directory:
+
+```bash
 python scripts/run_mimic_demo.py \
   --data /path/to/MIMICIII/data \
   --kg /path/to/KG_mapping \

@@ -91,6 +91,12 @@ def build(destination, model_run):
             "From a BAR repository checkout:\n"
             "python -m pip install .\n"
             "python scripts/predict_demo.py --bundle downloads/bar-demo-model.zip --verify-all\n\n"
+            "Evaluate the full Experiment on the authorized MIMIC-III data host, without training:\n"
+            'python -m pip install ".[experiment]"\n'
+            "python scripts/evaluate_mimic_demo.py --data /path/to/MIMICIII/data "
+            "--mapping /path/to/KG_mapping/ICD9CM_to_UMLS.csv "
+            "--out artifacts/ckd-evaluation.json\n"
+            "The report recomputes aggregate metrics and checks them against this release.\n\n"
             "The JSON preprocessor does not require loading joblib or pickle objects.\n"
             "Load checkpoint tensors with torch.load(weights_only=True).\n"
             "Reference runtime: Python 3.11, PyTorch 2.15.0, NumPy 2.5.4.\n"

@@ -124,9 +124,9 @@ def prepare(root, max_patients, seed):
     return split, summary
 
 
-def knowledge(root, training, config):
+def load_code_mapping(path):
     mapping = defaultdict(set)
-    for r in rows(root / "ICD9CM_to_UMLS.csv"):
+    for r in rows(path):
         original = r["ICD9CM"].strip().upper()
         code = original.replace(".", "")
         decimal = 4 if code.startswith("E") else 3
@@ -134,7 +134,11 @@ def knowledge(root, training, config):
         if original == canonical:
             mapping[code].add(r["UMLS"])
     # Ambiguous diagnosis-to-concept joins are not anchors.
-    mapping = {code: next(iter(ids)) for code, ids in mapping.items() if len(ids) == 1}
+    return {code: next(iter(ids)) for code, ids in mapping.items() if len(ids) == 1}
+
+
+def knowledge(root, training, config):
+    mapping = load_code_mapping(root / "ICD9CM_to_UMLS.csv")
     counts = Counter(
         cui for r in training for cui in {mapping[c] for c in r["codes"] if c in mapping}
     )
@@ -184,6 +188,26 @@ def knowledge(root, training, config):
     return GraphStore(graph), mapping
 
 
+def make_case(row, horizon, features, store, mapping, labeled=True):
+    anchors = sorted(
+        {
+            mapping[c]
+            for c in row["codes"]
+            if c in mapping and mapping[c] in store.nodes and store.incident(mapping[c])
+        }
+    )[:12]
+    fields = dict(
+        sample_id=row["id"],
+        disease_id=DISEASE,
+        horizon_days=horizon,
+        ehr_features=features,
+        anchor_ids=anchors,
+        diagnosis_codes=row["codes"],
+        history_codes=row["history"],
+    )
+    return TrainingCase(**fields, label=row["labels"][str(horizon)]) if labeled else Case(**fields)
+
+
 def measure(labels, scores):
     from sklearn.metrics import average_precision_score, brier_score_loss, roc_auc_score
 
@@ -216,6 +240,35 @@ def reasoning_summary(traces):
         "fallback_rate": float(np.mean([t.fallback for t in traces])),
         "budget_violations": sum(t.total_cost > t.budget + 1e-8 for t in traces),
     }
+
+
+def metric_summary(results):
+    return [
+        {
+            "horizon": h,
+            "samples": len(results[str(h)]["labels"]),
+            "positives": sum(results[str(h)]["labels"]),
+            "prevalence": float(np.mean(results[str(h)]["labels"])),
+            **{
+                model: measure(results[str(h)]["labels"], results[str(h)][model])
+                for model in ("ehr", "bar")
+            },
+        }
+        for h in HORIZONS
+    ]
+
+
+def validation_summary(results):
+    val_ap = {}
+    for model in ("bar", "ehr"):
+        available = [measure(v["labels"], v[model])["ap"] for v in results.values()]
+        available = [value for value in available if value is not None]
+        val_ap[model] = float(np.mean(available)) if available else None
+    if val_ap["bar"] is None:
+        raise ValueError(
+            "No validation positives; increase --patients for a measurable experiment."
+        )
+    return val_ap, max(val_ap, key=val_ap.get)
 
 
 def main():
@@ -266,25 +319,7 @@ def main():
 
     def convert(row, horizon, labeled=True):
         features = feature_rows[row["id"]] if labeled else encoder.transform([row])[0].tolist()
-        anchors = sorted(
-            {
-                mapping[c]
-                for c in row["codes"]
-                if c in mapping and mapping[c] in store.nodes and store.incident(mapping[c])
-            }
-        )[:12]
-        fields = dict(
-            sample_id=row["id"],
-            disease_id=DISEASE,
-            horizon_days=horizon,
-            ehr_features=features,
-            anchor_ids=anchors,
-            diagnosis_codes=row["codes"],
-            history_codes=row["history"],
-        )
-        return (
-            TrainingCase(**fields, label=row["labels"][str(horizon)]) if labeled else Case(**fields)
-        )
+        return make_case(row, horizon, features, store, mapping, labeled)
 
     prepared = {
         name: [convert(r, h) for r in records for h in HORIZONS] for name, records in split.items()
@@ -338,16 +373,7 @@ def main():
     print(json.dumps({"stage": "validation"}), flush=True)
     validation = evaluate(engine, prepared["validation"])
     # Validation-only choice between two completed stages, fixed before test evaluation.
-    val_ap = {}
-    for model in ("bar", "ehr"):
-        available = [measure(v["labels"], v[model])["ap"] for v in validation.values()]
-        available = [value for value in available if value is not None]
-        val_ap[model] = float(np.mean(available)) if available else None
-    if val_ap["bar"] is None:
-        raise ValueError(
-            "No validation positives; increase --patients for a measurable experiment."
-        )
-    preferred = max(val_ap, key=val_ap.get)
+    val_ap, preferred = validation_summary(validation)
     print(
         json.dumps({"stage": "test", "validation_ap": val_ap, "validation_preferred": preferred}),
         flush=True,
@@ -364,20 +390,7 @@ def main():
         )
     )
     testing = evaluate(engine, prepared["test"])
-    metrics = []
-    for h in HORIZONS:
-        test_h = [c for c in prepared["test"] if c.horizon_days == h]
-        result = testing[str(h)]
-        metrics.append(
-            {
-                "horizon": h,
-                "samples": len(test_h),
-                "positives": sum(result["labels"]),
-                "prevalence": float(np.mean(result["labels"])),
-                "ehr": measure(result["labels"], result["ehr"]),
-                "bar": measure(result["labels"], result["bar"]),
-            }
-        )
+    metrics = metric_summary(testing)
     traces = [t for row in testing.values() for t in row["traces"]]
     summary = {
         "dataset": "MIMIC-III",
