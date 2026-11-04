@@ -81,7 +81,9 @@ def test_release_version_is_consistent():
 
 
 def test_readme_local_links_resolve():
-    for target in re.findall(r"\]\(([^)]+)\)", (ROOT / "README.md").read_text()):
+    readme = (ROOT / "README.md").read_text()
+    targets = re.findall(r"\]\(([^)]+)\)", readme) + re.findall(r'src="([^"]+)"', readme)
+    for target in targets:
         if not target.startswith(("https://", "http://", "#")):
             assert (ROOT / target.split("#")[0]).is_file(), target
 
@@ -89,11 +91,14 @@ def test_readme_local_links_resolve():
 def test_live_demo_entry_and_clean_display():
     readme = (ROOT / "README.md").read_text()
     assert "[**Open the interactive demo**](https://chenc2002.github.io/BAR/demo/)" in readme
-    assert (
-        readme.index("## Method\n") < readme.index("## Quick Start\n") < readme.index("## Demo\n")
-    )
-    assert (
-        readme.index("<details>") < readme.index("assets/bar_demo.png") < readme.index("</details>")
+    assert readme.index("## Demo\n") < readme.index("## Method\n")
+    assert "## Quick Start" not in readme
+    assert readme.index("assets/bar_demo.png") < readme.index("<details>")
+    assert readme.index("<details>") < readme.index("git clone") < readme.index("</details>")
+    assert readme.index("## Method\n") < readme.index("assets/bar_overview.png")
+    assert re.search(
+        r'<a href="https://chenc2002.github.io/BAR/demo/">\s*<img src="assets/bar_demo.png"',
+        readme,
     )
     assert "[Release]" not in readme
     html = (ROOT / "demo/index.html").read_text()

@@ -1,16 +1,59 @@
 # Cite What You Explore: Budget-Aware LLM Reasoning over Medical KGs with Verifiable Evidence
 
 BAR (**B**udget-**A**ware LLM **R**easoning) combines electronic health records with
-source-backed medical knowledge to
-predict post-discharge disease risk. It assigns an uncertainty-based exploration
+source-backed medical knowledge to predict post-discharge disease risk.
+It assigns an uncertainty-based exploration
 budget, plans and verifies graph queries, and returns a prediction with a trace
 and citations. When evidence is insufficient, it returns the frozen EHR prediction.
 
-[Method](#method) · [Quick Start](#quick-start) · [Live Demo](https://chenc2002.github.io/BAR/demo/) · [Data](#data) · [Workflow](#workflow)
+[Live Demo](https://chenc2002.github.io/BAR/demo/) · [Method](#method) · [Data](#data) · [Workflow](#workflow)
 
-[![BAR overview: evidence graph construction, budget-aware reasoning, and training](assets/bar_overview.png)](assets/bar_overview.pdf)
+## Demo
+
+[**Open the interactive demo**](https://chenc2002.github.io/BAR/demo/)
+
+Explore CKD risk across 30/90/365-day horizons, vary the budget, and replay evidence
+acquisition. The [MIMIC-III experiment](#mimic-iii-experiment) compares BAR with its
+frozen EHR baseline using an offline policy.
+
+<a href="https://chenc2002.github.io/BAR/demo/">
+  <img src="assets/bar_demo.png" alt="BAR Evidence Explorer: open the interactive demo" width="640">
+</a>
+
+| Download | Size | Contents |
+| --- | --- | --- |
+| [Offline demo](https://github.com/ChenC2002/BAR/raw/refs/heads/main/downloads/bar-demo-offline.zip) | ~115 KB | Viewer, examples, 36 traces, and evaluation; open `index.html` |
+| [Model package](https://github.com/ChenC2002/BAR/raw/refs/heads/main/downloads/bar-demo-model.zip) | ~793 KB | Checkpoint, evidence graph, fitted JSON preprocessing, configuration, and examples |
+
+<details>
+<summary>Run locally (Python 3.11+)</summary>
+
+Install BAR and open the viewer:
+
+```bash
+git clone https://github.com/ChenC2002/BAR.git
+cd BAR
+python3 -m venv .venv
+source .venv/bin/activate
+python -m pip install .
+bar demo
+```
+
+Run the included checkpoint on an example and verify all 36 recorded episodes:
+
+```bash
+python scripts/predict_demo.py --case example-diabetes --horizon 90 --budget auto
+python scripts/predict_demo.py --verify-all
+```
+
+Dependencies are defined in [pyproject.toml](pyproject.toml).
+`python -m pip install -r requirements.txt` installs the same package.
+
+</details>
 
 ## Method
+
+[![BAR overview: evidence graph construction, budget-aware reasoning, and training](assets/bar_overview.png)](assets/bar_overview.pdf)
 
 Given a patient's EHR, a target disease, and a prediction horizon, BAR acquires
 a bounded set of knowledge-graph evidence and uses it to predict post-discharge risk.
@@ -49,49 +92,6 @@ citation integrity; paired gains use the same current predictor with and without
 | **Evidence Graph Construction** | [`graph.py`](src/bar/graph.py) | Refine disease-specific graphs using source support, provenance, and equivalent-edge groups |
 | **Budget-Aware Reasoning** | [`budget.py`](src/bar/budget.py), [`reasoning.py`](src/bar/reasoning.py), [`policy.py`](src/bar/policy.py) | Assign uncertainty-based budgets; plan, navigate, verify, revise, and stop |
 | **Prediction and Training** | [`model.py`](src/bar/model.py), [`training.py`](src/bar/training.py) | Fuse EHR and evidence, learn query routing, and save inference checkpoints |
-
-## Quick Start
-
-Use Python 3.11 or newer to run training and inference:
-
-```bash
-git clone https://github.com/ChenC2002/BAR.git
-cd BAR
-python3 -m venv .venv
-source .venv/bin/activate
-python -m pip install .
-```
-
-Run the included checkpoint on an example and verify all 36 recorded episodes:
-
-```bash
-python scripts/predict_demo.py --case example-diabetes --horizon 90 --budget auto
-python scripts/predict_demo.py --verify-all
-```
-
-Dependencies are defined in [pyproject.toml](pyproject.toml).
-`python -m pip install -r requirements.txt` installs the same package.
-
-## Demo
-
-[**Open the interactive demo**](https://chenc2002.github.io/BAR/demo/), or run
-`bar demo` after installation.
-
-Explore three CKD examples across 30/90/365-day horizons, vary the budget, and replay
-evidence acquisition. The experiment view compares BAR with its frozen Stage-1
-EHR-only MLP baseline using the [MIMIC-III run](#mimic-iii-experiment) and an offline policy.
-
-<details>
-<summary>Demo preview</summary>
-
-[![BAR Evidence Explorer](assets/bar_demo.png)](https://chenc2002.github.io/BAR/demo/)
-
-</details>
-
-| Download | Size | Contents |
-| --- | --- | --- |
-| [Offline demo](https://github.com/ChenC2002/BAR/raw/refs/heads/main/downloads/bar-demo-offline.zip) | ~115 KB | Viewer, examples, 36 traces, and evaluation; open `index.html` |
-| [Model package](https://github.com/ChenC2002/BAR/raw/refs/heads/main/downloads/bar-demo-model.zip) | ~793 KB | Checkpoint, evidence graph, fitted JSON preprocessing, configuration, and examples |
 
 ## Data
 
