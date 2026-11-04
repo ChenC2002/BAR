@@ -96,6 +96,12 @@ def test_live_demo_entry_and_clean_display():
     assert readme.index("assets/bar_demo.png") < readme.index("<details>")
     assert readme.index("<details>") < readme.index("git clone") < readme.index("</details>")
     assert readme.index("## Method\n") < readme.index("assets/bar_overview.png")
+    demo_section = readme.split("## Demo\n", 1)[1].split("## Method\n", 1)[0]
+    folds = re.findall(r"<details>\s*<summary>(.*?)</summary>(.*?)</details>", demo_section, re.S)
+    assert [title for title, _ in folds] == ["Run locally (Python 3.11+)", "MIMIC-III experiment"]
+    assert "scripts/run_mimic_demo.py" in folds[1][1]
+    assert "## MIMIC-III Experiment" not in readme
+    assert "#mimic-iii-experiment" not in readme
     assert re.search(
         r'<a href="https://chenc2002.github.io/BAR/demo/">\s*<img src="assets/bar_demo.png"',
         readme,

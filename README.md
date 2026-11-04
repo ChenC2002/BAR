@@ -13,7 +13,7 @@ and citations. When evidence is insufficient, it returns the frozen EHR predicti
 [**Open the interactive demo**](https://chenc2002.github.io/BAR/demo/)
 
 Explore CKD risk across 30/90/365-day horizons, vary the budget, and replay evidence
-acquisition. The [MIMIC-III experiment](#mimic-iii-experiment) compares BAR with its
+acquisition. The MIMIC-III experiment compares BAR with its
 frozen EHR baseline using an offline policy.
 
 <a href="https://chenc2002.github.io/BAR/demo/">
@@ -48,6 +48,45 @@ python scripts/predict_demo.py --verify-all
 
 Dependencies are defined in [pyproject.toml](pyproject.toml).
 `python -m pip install -r requirements.txt` installs the same package.
+
+</details>
+
+<details>
+<summary>MIMIC-III experiment</summary>
+
+The released checkpoint comes from a CKD run with **30,803 patients**, a UMLS
+evidence graph, an offline policy, and a 32-hidden-unit MLP. The runner uses ICD-9
+`585*` and 30/90/365-day first-recorded diagnosis outcomes after discharge, combining
+diagnosis history, demographics, and pre-discharge laboratory summaries.
+
+Patients are assigned to train/validation/test groups in a 70/10/20 ratio, ordered
+by earliest eligible discharge. Vocabulary, feature transforms, graph anchors,
+and uncertainty distributions are fitted using training data. Checkpoint selection
+uses validation macro average precision, early stopping, and two preset configurations;
+the selected checkpoint is then evaluated on the held-out test set.
+
+| Resource | Required files |
+| --- | --- |
+| MIMIC-III | `ADMISSIONS.csv`, `PATIENTS.csv`, `ICUSTAYS.csv`, `DIAGNOSES_ICD.csv`, `LABEVENTS.csv` |
+| Knowledge mapping | `ICD9CM_to_UMLS.csv`, `umls/umls.csv`, `umls/concept_names.txt` |
+
+Run on a machine with authorized data access:
+
+```bash
+python -m pip install ".[experiment]"
+python scripts/run_mimic_demo.py \
+  --data /path/to/MIMICIII/data \
+  --kg /path/to/KG_mapping \
+  --out artifacts/ckd-run --patients 40000
+```
+
+The run produces `bar.pt`, `features.json`, the selected configuration, and
+evaluation results. Keep record-level outputs on the data host. To update the
+viewer from the aggregate results and example cases:
+
+```bash
+python scripts/export_demo.py artifacts/ckd-run/public_demo.json --out demo/data.js
+```
 
 </details>
 
@@ -162,39 +201,3 @@ Use the same policy options with `bar train` for LLM-guided exploration.
 outputs. LLM weights stay frozen; the query router is learned locally. Diagnosis
 context and graph evidence are sent to the endpoint, so use only data and services
 permitted by your data-use agreements. Labels and numerical EHR features are not sent.
-
-## MIMIC-III Experiment
-
-The released checkpoint comes from a CKD run with **30,803 patients**, a UMLS
-evidence graph, an offline policy, and a 32-hidden-unit MLP. The runner uses ICD-9
-`585*` and 30/90/365-day first-recorded diagnosis outcomes after discharge, combining
-diagnosis history, demographics, and pre-discharge laboratory summaries.
-
-Patients are assigned to train/validation/test groups in a 70/10/20 ratio, ordered
-by earliest eligible discharge. Vocabulary, feature transforms, graph anchors,
-and uncertainty distributions are fitted using training data. Checkpoint selection
-uses validation macro average precision, early stopping, and two preset configurations;
-the selected checkpoint is then evaluated on the held-out test set.
-
-| Resource | Required files |
-| --- | --- |
-| MIMIC-III | `ADMISSIONS.csv`, `PATIENTS.csv`, `ICUSTAYS.csv`, `DIAGNOSES_ICD.csv`, `LABEVENTS.csv` |
-| Knowledge mapping | `ICD9CM_to_UMLS.csv`, `umls/umls.csv`, `umls/concept_names.txt` |
-
-Run on a machine with authorized data access:
-
-```bash
-python -m pip install ".[experiment]"
-python scripts/run_mimic_demo.py \
-  --data /path/to/MIMICIII/data \
-  --kg /path/to/KG_mapping \
-  --out artifacts/ckd-run --patients 40000
-```
-
-The run produces `bar.pt`, `features.json`, the selected configuration, and
-evaluation results. Keep record-level outputs on the data host. To update the
-viewer from the aggregate results and example cases:
-
-```bash
-python scripts/export_demo.py artifacts/ckd-run/public_demo.json --out demo/data.js
-```
